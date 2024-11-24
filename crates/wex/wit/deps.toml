@@ -1,0 +1,3 @@
+keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/219ea3612a53f1bf5b2d137551b22d0268fd3c58.tar.gz"
+messaging = "https://github.com/WebAssembly/wasi-messaging/archive/4ee59bb881f7a8675fbb3ae7ca5d5d586ab88657.tar.gz"
+sockets = "https://github.com/WebAssembly/wasi-sockets/archive/v0.2.2.tar.gz"

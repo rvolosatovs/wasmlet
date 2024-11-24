@@ -1,0 +1,74 @@
+[package]
+name = "wex"
+version = "0.1.0"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+async-nats = { workspace = true }
+bytes = { workspace = true }
+clap = { workspace = true, features = [
+    "color",
+    "derive",
+    "env",
+    "error-context",
+    "help",
+    "std",
+    "suggestions",
+    "usage",
+] }
+futures = { workspace = true }
+http = { workspace = true }
+http-body-util = { workspace = true }
+humantime = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true, features = [
+    "http1",
+    "http2",
+    "server",
+    "tokio",
+] }
+reqwest = { workspace = true, features = ["rustls-tls"] }
+rustix = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["fs", "signal"] }
+tokio-stream = { workspace = true, features = ["net"] }
+tokio-util = { workspace = true, features = ["codec"] }
+toml = { workspace = true, features = ["display", "parse", "indexmap"] }
+tracing = { workspace = true, features = ["attributes"] }
+tracing-subscriber = { workspace = true, features = [
+    "ansi",
+    "env-filter",
+    "fmt",
+    "smallvec",
+    "tracing-log",
+] }
+tun = { workspace = true, features = ["async"] }
+url = { workspace = true }
+wasi-preview1-component-adapter-provider = { workspace = true }
+wasmparser = { workspace = true }
+wasmtime = { workspace = true, features = [
+    "addr2line",
+    "async",
+    "cache",
+    "coredump",
+    "cranelift",
+    "demangle",
+    "gc",
+    "parallel-compilation",
+    "runtime",
+    "threads",
+    "wat",
+] }
+wasmtime-wasi = { workspace = true }
+wasmtime-wasi-http = { workspace = true }
+wit-component = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["fs", "sched"] }

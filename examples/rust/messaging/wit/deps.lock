@@ -1,0 +1,9 @@
+[keyvalue]
+url = "https://github.com/WebAssembly/wasi-keyvalue/archive/219ea3612a53f1bf5b2d137551b22d0268fd3c58.tar.gz"
+sha256 = "d2de617fe31ec0abc6072f75f97dd22bf95b3231d5b3111471d73871df9081cd"
+sha512 = "6f0b4e44c684d760c54552e2bde9bc976e0a4f6525fc1d47acb98625e030847276436242f42a41f4da1bb9169fb2968c53d659d61af9b2f709f4eb6f9880e2c7"
+
+[messaging]
+url = "https://github.com/WebAssembly/wasi-messaging/archive/55c13e8df56419e22b4e69f00d0883c9a3bfda3c.tar.gz"
+sha256 = "a15c4388d08ee1aeed5c8109dc2ff67ad94b90bf0e608339e992182be4627784"
+sha512 = "0806344e550d94f639080dd158c016bbb743e337bb1fe281414e0e1f4dfded3c7f01520a118322afb1bab8c1c375caaded33183d2fe190cda375fdbf3728f6e2"

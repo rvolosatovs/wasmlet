@@ -1,0 +1,69 @@
+# This is just a sketch of what the config could look like
+
+[nats]
+# Address, TLS etc
+
+[cli]
+## Optionaly disable calling `wasi:cli/run`
+# run = false
+
+# Args, etc
+
+#[[trigger.http]]
+#address = "[::1]:8080"
+## TLS, etc.
+#
+#[[trigger.nats]]
+#subject = "foo.bar.baz.>"
+#group = "example"
+## Address etc.
+#
+#[[trigger.wrpc.nats]]
+#prefix = "foo.bar.baz"
+#group = "example"
+#instance = "wasi:keyvalue@0.2.0"
+## NATS Address etc.
+
+[wasi.http]
+# DNS, TLS setup, etc., per host/address ?
+
+[[wasi.filesystem.mounts]]
+host = "/tmp/fs"
+guest = "/"
+mode = "ro"
+
+[wasi.messaging]
+# TODO: Grant access to particular URLs/addresses
+
+[wasi.messaging.clients.nats]
+target = "nats"
+
+[wasi.keyvalue]
+# TODO: Grant access to particular URLs/addresses
+
+[wasi.keyvalue.buckets.redis]
+target = "redis"
+
+[wasi.keyvalue.buckets.secrets]
+target = "vault"
+
+[import."foo:bar"]
+target = "foobar"
+
+[plugin.redis]
+protocol = "wrpc+nats"
+prefix = "foo.bar.baz"
+# NATS address etc.
+
+[plugin.nats]
+protocol = "wrpc+nats"
+prefix = "foo.bar.nats"
+# NATS address etc.
+
+[plugin.vault]
+protocol = "wrpc+tcp"
+address = "[::1]:7761"
+
+[plugin.foobar]
+protocol = "wrpc+quic"
+address = "[::1]:7762"

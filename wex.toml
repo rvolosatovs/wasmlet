@@ -1,0 +1,105 @@
+[compositions.foo.linux]
+#cgroup = "/path/to/cgroup"
+
+[compositions.foo.linux.cgroup]
+type = "none"
+
+# type = "host"
+# path = "/path/to/cgroup"
+
+# type = "dynamic"
+
+[compositions.foo.linux.resources.cpu]
+max = "10000 100000"
+
+[compositions.foo.linux.namespaces.network]
+#type = "none"
+#network = "/path/to/netns"
+#time = "/path/to/timens"
+
+[compositions.foo.components.cmd]
+src = "./target/wasm32-wasip2/release/example-sockets.wasm"
+
+[compositions.foo.components.cmd.cli]
+## Optionaly disable calling `wasi:cli/run`
+# run = false
+
+# Args, etc
+
+[compositions.foo.components.cmd.filesystem.mounts."/"]
+type = "host"
+path = "/tmp/fs"
+mode = "ro"
+
+[compositions.foo.components.cmd.filesystem.mounts."/foo"]
+type = "host"
+path = "/tmp/foo"
+mode = "rw"
+
+[compositions.foo.components.cmd.network.tcp.ipv4.loopback]
+type = "host"
+
+# type = "none" # default
+
+# type = "tun"
+
+# type = "composition" 
+# name = "bar" # extend localhost to another composition
+
+[compositions.foo.components.cmd.network.tcp.ipv4]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"        # run in host namespace
+address = "10.0.0.1" # 0.0.0.0 binds to 10.0.0.1, no other address is allowed to be bound
+
+[compositions.foo.components.cmd.network.tcp.ipv4.ports]
+type = "dynamic" # each port bind acts as bind on port `0`, remapped in the component
+
+#type = "direct" # 1:1, default
+
+# TODO: TBD
+#type = "map" # define a static mapping of port A -> B
+# if kind = "map"
+#[compositions.foo.components.cmd.network.tcp.ipv4.ports.map]
+## guest -> host
+#80 = 8080
+#443 = 8081
+#1234 = 8081
+
+[compositions.foo.components.cmd.network.tcp.ipv6]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"   # run in host namespace
+address = "::2"
+
+[compositions.foo.components.cmd.network.udp.ipv4]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"        # run in host namespace
+address = "10.0.0.2"
+
+[compositions.foo.components.cmd.network.udp.ipv6]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"   # run in host namespace
+address = "::3"
+
+[compositions.foo.components.cmd.network.dns]
+#type = "none" # default, no DNS
+type = "host"
+# TODO: nameserver config
+# TODO: Composition ACL
+# TODO: Component ACL
+
+# TODO
+#[compositions.foo.components.svc]
+#src = "./target/wasm32-wasip2/release/example-sockets.wasm"
+##[[compositions.foo.components.svc.trigger.http]]
+##address = "[::1]:8080"
+###path = "/foo/bar"
+##[[compositions.foo.components.svc.trigger.http]]
+##address = "[::1]:8081"
+#
+#[compositions.foo.components.db]
+#src = "./target/wasm32-wasip2/release/example-sockets.wasm"
+#[compositions.foo.components.db.limits]
+#instances = 10000
+#timeout = "10s"
+#[compositions.foo.components.db.state]
+#pool-size = 1000 # when pool-size > 0, this will allow memory reuse if present in pool

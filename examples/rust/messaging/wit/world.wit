@@ -1,0 +1,7 @@
+package wex-examples:messaging;
+
+world handler {
+    export wasi:messaging/incoming-handler@0.2.0-draft;
+
+    import wasi:messaging/request-reply@0.2.0-draft;
+}
