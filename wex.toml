@@ -37,9 +37,9 @@ path = "/tmp/foo"
 mode = "rw"
 
 [compositions.foo.components.cmd.network.tcp.ipv4.loopback]
-type = "host"
+#type = "host"
 
-# type = "none" # default
+type = "local" # default
 
 # type = "tun"
 
@@ -87,15 +87,21 @@ type = "host"
 # TODO: Composition ACL
 # TODO: Component ACL
 
-# TODO
-#[compositions.foo.components.svc]
-#src = "./target/wasm32-wasip2/release/example-sockets.wasm"
-##[[compositions.foo.components.svc.trigger.http]]
-##address = "[::1]:8080"
-###path = "/foo/bar"
-##[[compositions.foo.components.svc.trigger.http]]
-##address = "[::1]:8081"
-#
+[compositions.foo.components.svc]
+src = "./target/wasm32-wasip2/release/example_http.wasm"
+[[compositions.foo.components.svc.trigger.http]]
+type = "host"
+address = "[::1]:8080"
+[[compositions.foo.components.svc.trigger.http]]
+type = "virtual" # default, use `Host` header
+address = "[::1]:8081"
+
+[compositions.foo.components.router]
+src = "./target/wasm32-wasip2/release/example_http.wasm"
+[compositions.foo.components.router.config.paths]
+"/cmd" = "cmd.foo"
+"/svc" = "svc.foo"
+
 #[compositions.foo.components.db]
 #src = "./target/wasm32-wasip2/release/example-sockets.wasm"
 #[compositions.foo.components.db.limits]

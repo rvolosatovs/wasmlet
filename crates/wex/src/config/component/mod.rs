@@ -1,6 +1,6 @@
 use core::net::SocketAddr;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -9,17 +9,17 @@ pub mod network;
 
 pub use network::Config as Network;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HttpTrigger {
     pub address: SocketAddr,
 }
 
-#[derive(Default, Debug, Deserialize, Serialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub struct Cli {
     pub run: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NatsTrigger {
     pub subject: Box<str>,
     /// NATS queue group to use
@@ -27,7 +27,7 @@ pub struct NatsTrigger {
     pub group: Box<str>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct WrpcNatsTrigger {
     /// Prefix to listen for export invocations on
     #[serde(default)]
@@ -38,13 +38,13 @@ pub struct WrpcNatsTrigger {
     pub instance: Box<str>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct WrpcTrigger {
     #[serde(default)]
     pub nats: Box<[WrpcNatsTrigger]>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Trigger {
     #[serde(default)]
     pub http: Box<[HttpTrigger]>,
@@ -54,25 +54,25 @@ pub struct Trigger {
     pub wrpc: WrpcTrigger,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct KeyvalueBucket {
     pub target: Box<str>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub enum Mount {
     #[serde(rename = "host")]
     Host { path: PathBuf },
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Filesystem {
     #[serde(default)]
-    pub mounts: HashMap<Box<str>, Mount>,
+    pub mounts: BTreeMap<Box<str>, Mount>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     pub src: Box<str>,
     #[serde(default)]

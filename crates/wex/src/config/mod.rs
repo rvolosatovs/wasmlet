@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -9,25 +9,8 @@ pub use component::Config as Component;
 
 pub const DEFAULT_NATS_ADDRESS: &str = "nats://localhost:4222";
 
-fn default_nats_address() -> Box<str> {
-    DEFAULT_NATS_ADDRESS.into()
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Nats {
-    /// NATS address to use
-    #[serde(default = "default_nats_address")]
-    pub address: Box<str>,
-    // TODO: TLS etc.
-}
-
-impl Default for Nats {
-    fn default() -> Self {
-        Self {
-            address: default_nats_address(),
-        }
-    }
-}
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct Nats {}
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct KeyvalueBucket {
@@ -37,7 +20,7 @@ pub struct KeyvalueBucket {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Keyvalue {
     #[serde(default)]
-    pub buckets: HashMap<Box<str>, KeyvalueBucket>,
+    pub buckets: BTreeMap<Box<str>, KeyvalueBucket>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -48,7 +31,7 @@ pub struct MessagingClient {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Messaging {
     #[serde(default)]
-    pub clients: HashMap<Box<str>, MessagingClient>,
+    pub clients: BTreeMap<Box<str>, MessagingClient>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -99,7 +82,7 @@ pub struct Linux {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Composition {
     #[serde(default)]
-    pub components: HashMap<Box<str>, component::Config>,
+    pub components: BTreeMap<Box<str>, component::Config>,
     #[serde(default)]
     pub linux: Linux,
 }
@@ -107,7 +90,7 @@ pub struct Composition {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     #[serde(default)]
-    pub compositions: HashMap<Box<str>, Composition>,
+    pub compositions: BTreeMap<Box<str>, Composition>,
 
     // TODO: Figure out how to manage these
     #[serde(default)]
@@ -115,7 +98,7 @@ pub struct Config {
     #[serde(default)]
     pub messaging: Messaging,
     #[serde(default)]
-    pub plugin: HashMap<Box<str>, Plugin>,
+    pub plugin: BTreeMap<Box<str>, Plugin>,
     #[serde(default)]
     pub nats: Nats,
 }

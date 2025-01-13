@@ -6,14 +6,17 @@ use super::Ports;
 #[serde(tag = "type")]
 pub enum Loopback {
     #[serde(rename = "none")]
-    #[default]
     None,
 
-    #[serde(rename = "tun")]
-    Tun,
+    #[serde(rename = "local")]
+    #[default]
+    Local,
 
     #[serde(rename = "composition")]
     Composition { name: Option<Box<str>> },
+
+    #[serde(rename = "tun")]
+    Tun,
 
     #[serde(rename = "host")]
     Host,

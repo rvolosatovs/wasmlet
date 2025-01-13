@@ -22,6 +22,7 @@ clap = { workspace = true, features = [
     "suggestions",
     "usage",
 ] }
+fastwebsockets = { workspace = true, features = ["upgrade"] }
 futures = { workspace = true }
 http = { workspace = true }
 http-body-util = { workspace = true }
@@ -31,6 +32,7 @@ hyper-util = { workspace = true, features = [
     "http1",
     "http2",
     "server",
+    "server-graceful",
     "tokio",
 ] }
 reqwest = { workspace = true, features = ["rustls-tls"] }
@@ -51,6 +53,7 @@ tracing-subscriber = { workspace = true, features = [
 ] }
 tun = { workspace = true, features = ["async"] }
 url = { workspace = true }
+uuid = { workspace = true }
 wasi-preview1-component-adapter-provider = { workspace = true }
 wasmparser = { workspace = true }
 wasmtime = { workspace = true, features = [

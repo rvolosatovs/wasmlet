@@ -1,13 +1,15 @@
+use core::fmt::Debug;
 use core::future::{poll_fn, Future};
 use core::mem;
 use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use core::pin::Pin;
 use core::task::{Context, Poll};
+
 use std::collections::HashMap;
 use std::net::Shutdown;
 use std::sync::Arc;
 
-use anyhow::{bail, Context as _};
+use anyhow::{anyhow, bail, Context as _};
 use bytes::{Bytes, BytesMut};
 use futures::task::noop_waker_ref;
 use rustix::io::Errno;
@@ -23,23 +25,28 @@ use wasmtime_wasi::{
     SocketError, StreamError, Subscribe,
 };
 
-use crate::bindings::wasi::sockets::tcp::ShutdownType;
-use crate::bindings::wasi::sockets::udp::{IncomingDatagram, OutgoingDatagram};
+use crate::bindings::wasi::sockets::network::{
+    self, ErrorCode, IpAddress, IpAddressFamily, IpSocketAddress, Ipv4SocketAddress,
+    Ipv6SocketAddress,
+};
+use crate::bindings::wasi::sockets::tcp::{self, ShutdownType};
+use crate::bindings::wasi::sockets::udp::{self, IncomingDatagram, OutgoingDatagram};
 use crate::bindings::wasi::sockets::{
-    instance_network, ip_name_lookup, network, tcp, tcp_create_socket, udp, udp_create_socket,
+    instance_network, ip_name_lookup, tcp_create_socket, udp_create_socket,
 };
 use crate::wasi::sockets::{Network, SocketAddressFamily};
-use crate::Ctx;
-use crate::{
-    bindings::wasi::sockets::network::{
-        ErrorCode, IpAddress, IpAddressFamily, IpSocketAddress, Ipv4SocketAddress,
-        Ipv6SocketAddress,
-    },
-    config,
-};
+use crate::{config, Ctx, Ipv4Loopback};
 
 /// Value taken from rust std library.
 const DEFAULT_BACKLOG: u32 = 128;
+
+enum VirtualSocket {
+    Bound,
+    Connected,
+    Listening {
+        //queue: mpsc::
+    },
+}
 
 /// The state of a TCP socket.
 ///
@@ -83,7 +90,7 @@ enum State {
     Closed,
 }
 
-impl std::fmt::Debug for State {
+impl Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Default(_) => f.debug_tuple("Default").finish(),
@@ -316,7 +323,7 @@ impl TcpWriter {
             WriteState::Ready => {}
             WriteState::Closed => return Err(StreamError::Closed),
             WriteState::Writing(_) | WriteState::Closing(_) | WriteState::Error(_) => {
-                return Err(StreamError::Trap(anyhow::anyhow!(
+                return Err(StreamError::Trap(anyhow!(
                     "unpermitted: must call check_write first"
                 )));
             }
@@ -479,11 +486,9 @@ fn try_lock_for_stream<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, StreamE
 }
 
 fn try_lock_for_socket<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, SocketError> {
-    mutex.try_lock().map_err(|_| {
-        SocketError::trap(anyhow::anyhow!(
-            "concurrent access to resource not supported"
-        ))
-    })
+    mutex
+        .try_lock()
+        .map_err(|_| SocketError::trap(anyhow!("concurrent access to resource not supported")))
 }
 
 #[async_trait]
@@ -559,48 +564,48 @@ impl tcp::HostTcpSocket for Ctx {
             State::Default(socket) => {
                 match &mut local_address {
                     SocketAddr::V4(local_address) => match &self.network.tcp.ipv4 {
-                        config::component::network::Network::None { loopback } => {
+                        config::component::network::Network::None { .. } => {
                             let ip = local_address.ip();
                             if !ip.is_loopback() && !ip.is_unspecified() {
                                 return Ok(Err(ErrorCode::AddressNotBindable));
                             }
-                            match loopback {
-                                config::component::network::none::Loopback::None => {
+                            match &self.ipv4_tcp_loopback {
+                                None | Some(Ipv4Loopback::None) => {
                                     return Ok(Err(ErrorCode::AddressNotBindable))
                                 }
-                                config::component::network::none::Loopback::Tun => {
-                                    local_address.set_ip(self.ipv4_tun_addr);
-                                }
-                                config::component::network::none::Loopback::Composition {
-                                    ..
-                                } => {
+                                Some(Ipv4Loopback::Local(lo)) => {
                                     error!("TODO: implement");
                                     return Ok(Err(ErrorCode::AddressNotBindable));
+                                }
+                                Some(Ipv4Loopback::Composition(lo)) => {
+                                    error!("TODO: implement");
+                                    return Ok(Err(ErrorCode::AddressNotBindable));
+                                }
+                                Some(Ipv4Loopback::Tun { address, .. }) => {
+                                    local_address.set_ip(*address);
                                 }
                             }
                         }
                         config::component::network::Network::Host(
-                            config::component::network::host::Config {
-                                address,
-                                ports,
-                                loopback,
-                            },
+                            config::component::network::host::Config { address, ports, .. },
                         ) => {
                             let ip = local_address.ip();
                             if ip.is_loopback() {
-                                match loopback {
-                                    config::component::network::host::Loopback::None => {
+                                match &self.ipv4_tcp_loopback {
+                                    None => {}
+                                    Some(Ipv4Loopback::None) => {
                                         return Ok(Err(ErrorCode::AddressNotBindable))
                                     }
-                                    config::component::network::host::Loopback::Tun => {
-                                        local_address.set_ip(self.ipv4_tun_addr);
-                                    }
-                                    config::component::network::host::Loopback::Host => {}
-                                    config::component::network::host::Loopback::Composition {
-                                        ..
-                                    } => {
+                                    Some(Ipv4Loopback::Local(lo)) => {
                                         error!("TODO: implement");
                                         return Ok(Err(ErrorCode::AddressNotBindable));
+                                    }
+                                    Some(Ipv4Loopback::Composition(lo)) => {
+                                        error!("TODO: implement");
+                                        return Ok(Err(ErrorCode::AddressNotBindable));
+                                    }
+                                    Some(Ipv4Loopback::Tun { address, .. }) => {
+                                        local_address.set_ip(*address);
                                     }
                                 }
                             } else if let Some(address) = address {
@@ -721,24 +726,27 @@ impl tcp::HostTcpSocket for Ctx {
                             if !ip.is_loopback() {
                                 return Ok(Err(ErrorCode::ConnectionRefused));
                             }
-                            match loopback {
-                                config::component::network::none::Loopback::None => {
+                            match &self.ipv4_tcp_loopback {
+                                None | Some(Ipv4Loopback::None) => {
                                     return Ok(Err(ErrorCode::ConnectionRefused))
                                 }
-                                config::component::network::none::Loopback::Tun => {
-                                    let addr = self.ipv4_tun_addr;
-                                    remote_address.set_ip(addr);
+                                Some(Ipv4Loopback::Local(lo)) => {
+                                    error!("TODO: implement");
+                                    return Ok(Err(ErrorCode::ConnectionRefused));
+                                }
+                                Some(Ipv4Loopback::Composition(lo)) => {
+                                    error!("TODO: implement");
+                                    return Ok(Err(ErrorCode::ConnectionRefused));
+                                }
+                                Some(Ipv4Loopback::Tun { address, .. }) => {
+                                    let address = *address;
+                                    remote_address.set_ip(address);
                                     sock.state = State::Connecting(Box::pin(async move {
-                                        socket.bind(SocketAddr::V4(SocketAddrV4::new(addr, 0)))?;
+                                        socket
+                                            .bind(SocketAddr::V4(SocketAddrV4::new(address, 0)))?;
                                         socket.connect(SocketAddr::V4(remote_address)).await
                                     }));
                                     return Ok(Ok(()));
-                                }
-                                config::component::network::none::Loopback::Composition {
-                                    ..
-                                } => {
-                                    error!("TODO: implement");
-                                    return Ok(Err(ErrorCode::ConnectionRefused));
                                 }
                             }
                         }
@@ -751,26 +759,29 @@ impl tcp::HostTcpSocket for Ctx {
                         ) => {
                             let ip = remote_address.ip();
                             if ip.is_loopback() {
-                                match loopback {
-                                    config::component::network::host::Loopback::None => {
+                                match &self.ipv4_tcp_loopback {
+                                    None => {}
+                                    Some(Ipv4Loopback::None) => {
                                         return Ok(Err(ErrorCode::ConnectionRefused))
                                     }
-                                    config::component::network::host::Loopback::Tun => {
-                                        let addr = self.ipv4_tun_addr;
-                                        remote_address.set_ip(addr);
+                                    Some(Ipv4Loopback::Local(lo)) => {
+                                        error!("TODO: implement");
+                                        return Ok(Err(ErrorCode::ConnectionRefused));
+                                    }
+                                    Some(Ipv4Loopback::Composition(lo)) => {
+                                        error!("TODO: implement");
+                                        return Ok(Err(ErrorCode::ConnectionRefused));
+                                    }
+                                    Some(Ipv4Loopback::Tun { address, .. }) => {
+                                        let address = *address;
+                                        remote_address.set_ip(address);
                                         sock.state = State::Connecting(Box::pin(async move {
-                                            socket
-                                                .bind(SocketAddr::V4(SocketAddrV4::new(addr, 0)))?;
+                                            socket.bind(SocketAddr::V4(SocketAddrV4::new(
+                                                address, 0,
+                                            )))?;
                                             socket.connect(SocketAddr::V4(remote_address)).await
                                         }));
                                         return Ok(Ok(()));
-                                    }
-                                    config::component::network::host::Loopback::Host => {}
-                                    config::component::network::host::Loopback::Composition {
-                                        ..
-                                    } => {
-                                        error!("TODO: implement");
-                                        return Ok(Err(ErrorCode::ConnectionRefused));
                                     }
                                 }
                             } else if let Some(address) = address {
