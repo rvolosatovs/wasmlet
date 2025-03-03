@@ -21,8 +21,8 @@ use wasmtime::component::Resource;
 use wasmtime_wasi::bindings::clocks::monotonic_clock::Duration;
 use wasmtime_wasi::runtime::AbortOnDropJoinHandle;
 use wasmtime_wasi::{
-    async_trait, subscribe, HostInputStream, HostOutputStream, InputStream, OutputStream, Pollable,
-    SocketError, StreamError, Subscribe,
+    async_trait, subscribe, DynInputStream, DynPollable, HostInputStream, HostOutputStream,
+    OutputStream, SocketError, StreamError, Subscribe,
 };
 
 use crate::bindings::wasi::sockets::network::{
@@ -241,7 +241,7 @@ impl TcpReader {
 struct TcpReadStream(Arc<Mutex<TcpReader>>);
 
 #[async_trait]
-impl HostInputStream for TcpReadStream {
+impl DynInputStream for TcpReadStream {
     fn read(&mut self, size: usize) -> Result<Bytes, StreamError> {
         try_lock_for_stream(&self.0)?.read(size)
     }
@@ -447,7 +447,7 @@ impl TcpWriter {
 struct TcpWriteStream(Arc<Mutex<TcpWriter>>);
 
 #[async_trait]
-impl HostOutputStream for TcpWriteStream {
+impl OutputStream for TcpWriteStream {
     fn write(&mut self, bytes: Bytes) -> Result<(), StreamError> {
         try_lock_for_stream(&self.0)?.write(bytes)
     }
@@ -820,7 +820,8 @@ impl tcp::HostTcpSocket for Ctx {
     async fn finish_connect(
         &mut self,
         sock: Resource<Socket>,
-    ) -> wasmtime::Result<Result<(Resource<InputStream>, Resource<OutputStream>), ErrorCode>> {
+    ) -> wasmtime::Result<Result<(Resource<DynInputStream>, Resource<HostOutputStream>), ErrorCode>>
+    {
         bail!("not supported yet")
     }
 
@@ -900,8 +901,8 @@ impl tcp::HostTcpSocket for Ctx {
         Result<
             (
                 Resource<Socket>,
-                Resource<InputStream>,
-                Resource<OutputStream>,
+                Resource<DynInputStream>,
+                Resource<HostOutputStream>,
             ),
             ErrorCode,
         >,
@@ -1001,12 +1002,12 @@ impl tcp::HostTcpSocket for Ctx {
             },
             family,
         ))?;
-        let input: Resource<InputStream> = self
+        let input: Resource<DynInputStream> = self
             .table
-            .push_child(Box::new(TcpReadStream(reader)) as InputStream, &sock)?;
+            .push_child(Box::new(TcpReadStream(reader)) as DynInputStream, &sock)?;
         let output = self
             .table
-            .push_child(Box::new(TcpWriteStream(writer)) as OutputStream, &sock)?;
+            .push_child(Box::new(TcpWriteStream(writer)) as HostOutputStream, &sock)?;
         Ok(Ok((sock, input, output)))
     }
 
@@ -1338,7 +1339,10 @@ impl tcp::HostTcpSocket for Ctx {
         bail!("not supported yet")
     }
 
-    async fn subscribe(&mut self, sock: Resource<Socket>) -> wasmtime::Result<Resource<Pollable>> {
+    async fn subscribe(
+        &mut self,
+        sock: Resource<Socket>,
+    ) -> wasmtime::Result<Resource<DynPollable>> {
         subscribe(&mut self.table, sock)
     }
 

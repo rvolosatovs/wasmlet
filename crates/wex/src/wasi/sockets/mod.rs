@@ -9,7 +9,7 @@ use rustix::io::Errno;
 use tracing::{debug, instrument};
 use wasmtime::component::Resource;
 use wasmtime_wasi::bindings::clocks::monotonic_clock::Duration;
-use wasmtime_wasi::{async_trait, subscribe, InputStream, OutputStream, Pollable, Subscribe};
+use wasmtime_wasi::{async_trait, subscribe, InputStream, OutputStream, DynPollable, Subscribe};
 
 use crate::bindings::wasi::sockets::network::{
     ErrorCode, IpAddress, IpAddressFamily, IpSocketAddress, Ipv4Address, Ipv4SocketAddress,
@@ -287,7 +287,7 @@ impl ip_name_lookup::HostResolveAddressStream for Ctx {
     async fn subscribe(
         &mut self,
         self_: Resource<ResolveAddressStream>,
-    ) -> wasmtime::Result<Resource<Pollable>> {
+    ) -> wasmtime::Result<Resource<DynPollable>> {
         todo!()
     }
 
@@ -472,7 +472,7 @@ impl udp::HostOutgoingDatagramStream for Ctx {
     async fn subscribe(
         &mut self,
         self_: Resource<OutgoingDatagramStream>,
-    ) -> wasmtime::Result<Resource<Pollable>> {
+    ) -> wasmtime::Result<Resource<DynPollable>> {
         todo!()
     }
 

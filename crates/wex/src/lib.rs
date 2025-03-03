@@ -35,35 +35,37 @@ use wasi_preview1_component_adapter_provider::{
 use wasmtime::component::{InstancePre, Linker};
 use wasmtime::{Engine, Store};
 use wasmtime::{InstanceAllocationStrategy, PoolingAllocationConfig};
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiImpl, WasiView};
+use wasmtime_wasi::{IoImpl, IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiImpl, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::config::{Config, DEFAULT_NATS_ADDRESS};
-use crate::wasi::messaging;
+//use crate::wasi::messaging;
 
+pub mod p3;
+mod runtime;
 pub mod config;
-pub mod wasi;
+//pub mod wasi;
 
-pub mod bindings {
-    wasmtime::component::bindgen!({
-        world: "imports",
-        async: true,
-        tracing: true,
-        trappable_imports: true,
-        with: {
-            "wasi:io": wasmtime_wasi::bindings::io,
-            "wasi:messaging/request-reply/request-options": crate::wasi::messaging::RequestOptions,
-            "wasi:messaging/types/client": crate::wasi::messaging::Client,
-            "wasi:messaging/types/message": crate::wasi::messaging::Message,
-            "wasi:sockets/ip-name-lookup/resolve-address-stream": crate::wasi::sockets::ResolveAddressStream,
-            "wasi:sockets/network/network": crate::wasi::sockets::Network,
-            "wasi:sockets/tcp/tcp-socket": crate::wasi::sockets::TcpSocket,
-            "wasi:sockets/udp/incoming-datagram-stream": crate::wasi::sockets::IncomingDatagramStream,
-            "wasi:sockets/udp/outgoing-datagram-stream": crate::wasi::sockets::OutgoingDatagramStream,
-            "wasi:sockets/udp/udp-socket": crate::wasi::sockets::UdpSocket,
-        },
-    });
-}
+//pub mod bindings {
+//    wasmtime::component::bindgen!({
+//        world: "imports",
+//        async: true,
+//        tracing: true,
+//        trappable_imports: true,
+//        with: {
+//            "wasi:io": wasmtime_wasi::bindings::io,
+//            "wasi:messaging/request-reply/request-options": crate::wasi::messaging::RequestOptions,
+//            "wasi:messaging/types/client": crate::wasi::messaging::Client,
+//            "wasi:messaging/types/message": crate::wasi::messaging::Message,
+//            "wasi:sockets/ip-name-lookup/resolve-address-stream": crate::wasi::sockets::ResolveAddressStream,
+//            "wasi:sockets/network/network": crate::wasi::sockets::Network,
+//            "wasi:sockets/tcp/tcp-socket": crate::wasi::sockets::TcpSocket,
+//            "wasi:sockets/udp/incoming-datagram-stream": crate::wasi::sockets::IncomingDatagramStream,
+//            "wasi:sockets/udp/outgoing-datagram-stream": crate::wasi::sockets::OutgoingDatagramStream,
+//            "wasi:sockets/udp/udp-socket": crate::wasi::sockets::UdpSocket,
+//        },
+//    });
+//}
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event {
@@ -593,7 +595,8 @@ impl Composition {
         };
 
         let messaging_pre = (!trigger.nats.is_empty())
-            .then(|| messaging::bindings::MessagingGuestPre::new(pre.clone()))
+            //.then(|| messaging::bindings::MessagingGuestPre::new(pre.clone()))
+            .then(|| anyhow::Ok(()))
             .transpose()
             .context("failed to pre-instantiate `wasi:messaging/incoming-handler`")?;
         let nats_msgs = if !trigger.nats.is_empty() {
@@ -666,12 +669,13 @@ impl Composition {
                 },
                 Some(msg) = nats_msgs.next() => {
                     let new_store_init = new_store_init.clone();
-                    handle_message(
-                        &mut tasks,
-                        new_store_init,
-                        messaging_pre.clone().unwrap(),
-                        messaging::Message::Nats(msg),
-                    );
+                        todo!()
+                    //handle_message(
+                    //    &mut tasks,
+                    //    new_store_init,
+                    //    messaging_pre.clone().unwrap(),
+                    //    messaging::Message::Nats(msg),
+                    //);
                 },
                 Some(res) = tasks.join_next() => {
                     handle_join_result(res)
@@ -729,21 +733,21 @@ pub async fn nats_client(
         .context("failed to connect to NATS.io")
 }
 
+impl IoView for Ctx {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+}
+
 impl WasiView for Ctx {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi
-    }
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
     }
 }
 
 impl WasiHttpView for Ctx {
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         &mut self.http
-    }
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
     }
 }
 
@@ -773,9 +777,6 @@ fn new_pooling_config(instances: u32) -> PoolingAllocationConfig {
     }
     if let Some(v) = getenv("WEX_WASMTIME_POOLING_DECOMMIT_BATCH_SIZE") {
         config.decommit_batch_size(v);
-    }
-    if let Some(v) = getenv("WEX_WASMTIME_POOLING_ASYNC_STACK_ZEROING") {
-        config.async_stack_zeroing(v);
     }
     if let Some(v) = getenv("WEX_WASMTIME_POOLING_ASYNC_STACK_KEEP_RESIDENT") {
         config.async_stack_keep_resident(v);
@@ -855,7 +856,7 @@ fn use_pooling_allocator_by_default() -> anyhow::Result<bool> {
     }
     let mut config = wasmtime::Config::new();
     config.wasm_memory64(true);
-    config.static_memory_maximum_size(1 << BITS_TO_TEST);
+    config.memory_reservation(1 << BITS_TO_TEST);
     let engine = Engine::new(&config)?;
     let mut store = wasmtime::Store::new(&engine, ());
     // NB: the maximum size is in wasm pages to take out the 16-bits of wasm
@@ -956,15 +957,15 @@ pub async fn instantiate_pre(
         .context("failed to compile component")?;
 
     let mut linker = Linker::<Ctx>::new(&engine);
-    let closure = type_annotate(|ctx| WasiImpl(ctx));
+    let closure = type_annotate(|ctx| WasiImpl(IoImpl(ctx)));
 
     wasmtime_wasi::bindings::clocks::wall_clock::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::clocks::monotonic_clock::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::filesystem::types::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::filesystem::preopens::add_to_linker_get_host(&mut linker, closure)?;
-    wasmtime_wasi::bindings::io::error::add_to_linker_get_host(&mut linker, closure)?;
-    wasmtime_wasi::bindings::io::poll::add_to_linker_get_host(&mut linker, closure)?;
-    wasmtime_wasi::bindings::io::streams::add_to_linker_get_host(&mut linker, closure)?;
+    //    wasmtime_wasi::bindings::io::error::add_to_linker_get_host(&mut linker, closure)?;
+    //    wasmtime_wasi::bindings::io::poll::add_to_linker_get_host(&mut linker, closure)?;
+    //    wasmtime_wasi::bindings::io::streams::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::random::random::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::random::insecure::add_to_linker_get_host(&mut linker, closure)?;
     wasmtime_wasi::bindings::random::insecure_seed::add_to_linker_get_host(&mut linker, closure)?;
@@ -984,68 +985,68 @@ pub async fn instantiate_pre(
     wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)
         .context("failed to link `wasi:http`")?;
 
-    bindings::wasi::sockets::tcp::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/tcp`")?;
-    bindings::wasi::sockets::tcp_create_socket::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/tcp-create-socket`")?;
-    bindings::wasi::sockets::udp::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/udp`")?;
-    bindings::wasi::sockets::udp_create_socket::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/udp-create-socket`")?;
-    bindings::wasi::sockets::instance_network::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/instance-network`")?;
-    let opts = bindings::wasi::sockets::network::LinkOptions::default();
-    bindings::wasi::sockets::network::add_to_linker(&mut linker, &opts, |ctx| ctx)
-        .context("failed to link `wasi:sockets/network`")?;
-    bindings::wasi::sockets::ip_name_lookup::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:sockets/ip-name-lookup`")?;
+    //bindings::wasi::sockets::tcp::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/tcp`")?;
+    //bindings::wasi::sockets::tcp_create_socket::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/tcp-create-socket`")?;
+    //bindings::wasi::sockets::udp::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/udp`")?;
+    //bindings::wasi::sockets::udp_create_socket::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/udp-create-socket`")?;
+    //bindings::wasi::sockets::instance_network::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/instance-network`")?;
+    //let opts = bindings::wasi::sockets::network::LinkOptions::default();
+    //bindings::wasi::sockets::network::add_to_linker(&mut linker, &opts, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/network`")?;
+    //bindings::wasi::sockets::ip_name_lookup::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:sockets/ip-name-lookup`")?;
 
-    bindings::wasi::keyvalue::atomics::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:keyvalue/atomics`")?;
-    bindings::wasi::keyvalue::batch::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:keyvalue/batch`")?;
-    bindings::wasi::keyvalue::store::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:keyvalue/store`")?;
+    //bindings::wasi::keyvalue::atomics::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:keyvalue/atomics`")?;
+    //bindings::wasi::keyvalue::batch::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:keyvalue/batch`")?;
+    //bindings::wasi::keyvalue::store::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:keyvalue/store`")?;
 
-    bindings::wasi::messaging::types::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:messaging/types`")?;
-    bindings::wasi::messaging::producer::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:messaging/producer`")?;
-    bindings::wasi::messaging::request_reply::add_to_linker(&mut linker, |ctx| ctx)
-        .context("failed to link `wasi:messaging/request_reply`")?;
+    //bindings::wasi::messaging::types::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:messaging/types`")?;
+    //bindings::wasi::messaging::producer::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:messaging/producer`")?;
+    //bindings::wasi::messaging::request_reply::add_to_linker(&mut linker, |ctx| ctx)
+    //    .context("failed to link `wasi:messaging/request_reply`")?;
 
     linker
         .instantiate_pre(&component)
         .context("failed to pre-instantiate component")
 }
 
-pub fn handle_message<Fut>(
-    tasks: &mut JoinSet<anyhow::Result<()>>,
-    new_store: impl FnOnce() -> Fut + Send + 'static,
-    pre: messaging::bindings::MessagingGuestPre<Ctx>,
-    msg: messaging::Message,
-) where
-    Fut: Future<Output = anyhow::Result<Store<Ctx>>> + Send + 'static,
-{
-    tasks.spawn(async move {
-        let mut store = new_store().await?;
-        let component = pre
-            .instantiate_async(&mut store)
-            .await
-            .context("failed to instantiate `wasi:messaging/incoming-handler`")?;
-        let msg = store
-            .data_mut()
-            .table
-            .push(msg)
-            .context("failed to push message to table")?;
-        let res = component
-            .wasi_messaging_incoming_handler()
-            .call_handle(&mut store, msg)
-            .await
-            .context("failed to invoke component")?;
-        res.context("failed to handle NATS.io message")
-    });
-}
+//pub fn handle_message<Fut>(
+//    tasks: &mut JoinSet<anyhow::Result<()>>,
+//    new_store: impl FnOnce() -> Fut + Send + 'static,
+//    pre: messaging::bindings::MessagingGuestPre<Ctx>,
+//    msg: messaging::Message,
+//) where
+//    Fut: Future<Output = anyhow::Result<Store<Ctx>>> + Send + 'static,
+//{
+//    tasks.spawn(async move {
+//        let mut store = new_store().await?;
+//        let component = pre
+//            .instantiate_async(&mut store)
+//            .await
+//            .context("failed to instantiate `wasi:messaging/incoming-handler`")?;
+//        let msg = store
+//            .data_mut()
+//            .table
+//            .push(msg)
+//            .context("failed to push message to table")?;
+//        let res = component
+//            .wasi_messaging_incoming_handler()
+//            .call_handle(&mut store, msg)
+//            .await
+//            .context("failed to invoke component")?;
+//        res.context("failed to handle NATS.io message")
+//    });
+//}
 
 pub fn handle_http<Fut>(
     tasks: &mut JoinSet<anyhow::Result<()>>,
