@@ -52,7 +52,6 @@ uuid = { version = "1", features = ["fast-rng", "v7"] }
 wasi-preview1-component-adapter-provider = "27"
 wasmparser = "0.220"
 wasmtime = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
-#wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
 wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
 wasmtime-wasi-http = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
 windows-sys = "0.59.0"
