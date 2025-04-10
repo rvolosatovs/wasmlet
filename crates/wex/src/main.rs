@@ -3,15 +3,17 @@ use core::pin::pin;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::task::Poll;
 
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{anyhow, bail, Context as _};
 use clap::Parser;
 use hyper_util::rt::TokioIo;
+use tokio::fs;
+use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc, watch, Notify, OnceCell};
 use tokio::task::JoinSet;
 use tokio::time::sleep;
-use tokio::{fs, net::TcpListener};
 use tokio::{select, signal};
 use tracing::{debug, error, info, info_span, Instrument as _};
 use tracing_subscriber::layer::SubscriberExt as _;

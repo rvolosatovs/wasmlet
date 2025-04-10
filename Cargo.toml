@@ -56,5 +56,5 @@ wasmtime = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" 
 wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
 wasmtime-wasi-http = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
 windows-sys = "0.59.0"
-wit-bindgen = "0.35"
+wit-bindgen = "0.39"
 wit-component = "0.220"

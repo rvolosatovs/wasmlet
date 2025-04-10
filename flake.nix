@@ -193,6 +193,7 @@
             buildInputs = [
               pkgs.cargo-audit
               pkgs.cargo-nextest
+              pkgs.websocat
               pkgs.wit-deps
 
               pkgs.pkgsUnstable.go

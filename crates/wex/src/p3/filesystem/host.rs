@@ -330,39 +330,43 @@ where
                                                         ));
                                                     };
                                                     Some(Ok((
-                                                        DirectoryEntry {
+                                                        Some(DirectoryEntry {
                                                             type_: meta.file_type().into(),
                                                             name,
-                                                        },
+                                                        }),
                                                         entries,
                                                     )))
                                                 }
-                                                Err(err) => Some(Err(err.into())),
+                                                Err(err) => {
+                                                    // On windows, filter out files like `C:\DumpStack.log.tmp` which we
+                                                    // can't get full metadata for.
+                                                    #[cfg(windows)]
+                                                    {
+                                                        use windows_sys::Win32::Foundation::{
+                                                            ERROR_ACCESS_DENIED,
+                                                            ERROR_SHARING_VIOLATION,
+                                                        };
+                                                        if err.raw_os_error()
+                                                            == Some(ERROR_SHARING_VIOLATION as i32)
+                                                            || err.raw_os_error()
+                                                                == Some(ERROR_ACCESS_DENIED as i32)
+                                                        {
+                                                            return Some(Ok((None, entries)));
+                                                        }
+                                                    }
+                                                    Some(Err(err.into()))
+                                                }
                                             })
                                             .await
                                         {
                                             None => break,
                                             Some(Ok((entry, tail))) => {
-                                                tx.send(Ok(vec![entry]));
+                                                if let Some(entry) = entry {
+                                                    tx.send(Ok(vec![entry]));
+                                                }
                                                 entries = tail;
                                             }
                                             Some(Err(err)) => {
-                                                // On windows, filter out files like `C:\DumpStack.log.tmp` which we
-                                                // can't get full metadata for.
-                                                #[cfg(windows)]
-                                                {
-                                                    use windows_sys::Win32::Foundation::{
-                                                        ERROR_ACCESS_DENIED,
-                                                        ERROR_SHARING_VIOLATION,
-                                                    };
-                                                    if err.raw_os_error()
-                                                        == Some(ERROR_SHARING_VIOLATION as i32)
-                                                        || err.raw_os_error()
-                                                            == Some(ERROR_ACCESS_DENIED as i32)
-                                                    {
-                                                        continue;
-                                                    }
-                                                }
                                                 tx.send(Err(err));
                                                 break;
                                             }
