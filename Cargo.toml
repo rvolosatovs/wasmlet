@@ -49,11 +49,11 @@ tracing-subscriber = "0.3"
 tun = "0.7"
 url = "2"
 uuid = { version = "1", features = ["fast-rng", "v7"] }
-wasi-preview1-component-adapter-provider = "27"
-wasmparser = "0.220"
-wasmtime = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
-wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
-wasmtime-wasi-http = { git = "https://github.com/bytecodealliance/wasip3-prototyping.git" }
+wasi-preview1-component-adapter-provider = "31"
+wasmparser = "0.228"
+wasmtime = "31"
+wasmtime-wasi = "31"
+wasmtime-wasi-http = "31"
 windows-sys = "0.59.0"
-wit-bindgen = "0.39"
-wit-component = "0.220"
+wit-bindgen = "0.41"
+wit-component = "0.228"

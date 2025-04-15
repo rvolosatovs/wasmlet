@@ -41,7 +41,7 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use crate::config::{Config, DEFAULT_NATS_ADDRESS};
 //use crate::wasi::messaging;
 
-pub mod p3;
+//pub mod p3;
 mod runtime;
 pub mod config;
 //pub mod wasi;
