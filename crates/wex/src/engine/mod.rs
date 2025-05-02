@@ -950,7 +950,7 @@ impl Engine {
     ) -> anyhow::Result<()> {
         let workload_count = workloads.len();
         let service_count = services.len();
-        let (shutdown_tx, shutdown_rx) = watch::channel(0);
+        let (shutdown_tx, _) = watch::channel(0);
         let mut next = EngineState {
             plugins: HashMap::with_capacity(plugins.len()),
             services: HashMap::with_capacity(service_count),
