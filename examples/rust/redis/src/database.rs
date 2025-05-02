@@ -148,9 +148,7 @@ impl GuestFrameStream for FrameStream {
     }
 
     fn read(&self) -> Result<bool, FrameStreamError> {
-        eprintln!("*** *** reading from stream..");
         let buf = self.stream.read(8096).map_err(FrameStreamError::Io)?;
-        eprintln!("*** *** read from stream {buf:?}..");
         let mut buffer = self.buffer.borrow_mut();
         if buffer.is_empty() {
             *buffer = Bytes::from(buf).into();
@@ -159,15 +157,12 @@ impl GuestFrameStream for FrameStream {
         }
         let mut frames = self.frames.borrow_mut();
         let mut codec = self.codec.borrow_mut();
-        eprintln!("*** *** decoding frame..");
         while let Some(frame) = codec
             .decode(&mut buffer)
             .map_err(|err| FrameStreamError::Decode(err.to_string()))?
         {
-            eprintln!("*** *** decoded frame {frame:?}");
             frames.push_back(database::Frame::new(frame));
         }
-        eprintln!("*** *** finished frames..");
         Ok(true)
     }
 
