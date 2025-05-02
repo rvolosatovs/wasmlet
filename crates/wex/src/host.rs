@@ -145,12 +145,12 @@ async fn fetch_src(src: &str) -> anyhow::Result<Bytes> {
         Binary(Vec<u8>),
     }
     let src = if src.starts_with('.') || src.starts_with('/') {
-        fs::read(&*src)
+        fs::read(src)
             .await
             .with_context(|| format!("failed to read bytes from `{src}`"))
             .map(Src::Binary)
     } else {
-        Url::parse(&src)
+        Url::parse(src)
             .with_context(|| format!("failed to parse bytes URL `{src}`"))
             .map(Src::Url)
     }?;
@@ -483,16 +483,16 @@ impl Host {
                         }
                     }
                     Err(mpsc::error::TrySendError::Full(..)) => {
-                        return build_http_response(
+                        build_http_response(
                             http::StatusCode::SERVICE_UNAVAILABLE,
                             "engine buffer full",
-                        );
+                        )
                     }
                     Err(mpsc::error::TrySendError::Closed(..)) => {
-                        return build_http_response(
+                        build_http_response(
                             http::StatusCode::INTERNAL_SERVER_ERROR,
                             "engine thread exited",
-                        );
+                        )
                     }
                 }
             }

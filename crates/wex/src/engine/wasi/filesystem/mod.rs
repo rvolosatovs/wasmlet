@@ -226,9 +226,7 @@ impl From<&cap_std::fs::Metadata> for MetadataHashValue {
 #[cfg(unix)]
 fn from_raw_os_error(err: Option<i32>) -> Option<ErrorCode> {
     use rustix::io::Errno as RustixErrno;
-    if err.is_none() {
-        return None;
-    }
+    err?;
     Some(match RustixErrno::from_raw_os_error(err.unwrap()) {
         RustixErrno::PIPE => ErrorCode::Pipe,
         RustixErrno::PERM => ErrorCode::NotPermitted,
@@ -743,13 +741,9 @@ impl Descriptor {
             return Err(ErrorCode::Unsupported);
         }
 
-        if oflags.contains(OpenFlags::DIRECTORY) {
-            if oflags.contains(OpenFlags::CREATE)
-                || oflags.contains(OpenFlags::EXCLUSIVE)
-                || oflags.contains(OpenFlags::TRUNCATE)
-            {
-                return Err(ErrorCode::Invalid);
-            }
+        if oflags.contains(OpenFlags::DIRECTORY) && (oflags.contains(OpenFlags::CREATE)
+                || oflags.contains(OpenFlags::EXCLUSIVE) || oflags.contains(OpenFlags::TRUNCATE)) {
+            return Err(ErrorCode::Invalid);
         }
 
         // Now enforce this WasiCtx's permissions before letting the OS have

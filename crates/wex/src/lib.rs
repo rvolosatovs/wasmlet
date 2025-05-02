@@ -24,7 +24,7 @@ pub const EPOCH_INTERVAL: Duration = Duration::from_millis(1);
 pub static EPOCH_MONOTONIC_NOW: AtomicU64 = AtomicU64::new(0);
 pub static EPOCH_SYSTEM_NOW: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) const NOOP_WAKER: &'static Waker = Waker::noop();
+pub(crate) const NOOP_WAKER: &Waker = Waker::noop();
 
 fn getenv<T>(key: &str) -> Option<T>
 where

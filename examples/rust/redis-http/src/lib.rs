@@ -128,8 +128,7 @@ fn handle(request: IncomingRequest) -> anyhow::Result<(OutgoingResponse, String)
     let (path, params) = pq.split_once('?').unwrap_or((pq, ""));
     let params: HashMap<&str, &str> = params
         .split("&")
-        .map(|p| p.split_once("="))
-        .flatten()
+        .filter_map(|p| p.split_once("="))
         .collect();
     match path {
         "/test" => {

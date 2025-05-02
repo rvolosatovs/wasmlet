@@ -26,14 +26,14 @@ pub fn lower<T: ResourceView, U: ResourceView>(
         Val::String(v) => Ok(Val::String(v.clone())),
         Val::List(vs) => {
             let vs = vs
-                .into_iter()
+                .iter()
                 .map(|v| lower(store, target_store, v))
                 .collect::<anyhow::Result<_>>()?;
             Ok(Val::List(vs))
         }
         Val::Record(vs) => {
             let vs = vs
-                .into_iter()
+                .iter()
                 .map(|(name, v)| {
                     let v = lower(store, target_store, v)?;
                     Ok((name.clone(), v))
@@ -43,7 +43,7 @@ pub fn lower<T: ResourceView, U: ResourceView>(
         }
         Val::Tuple(vs) => {
             let vs = vs
-                .into_iter()
+                .iter()
                 .map(|v| lower(store, target_store, v))
                 .collect::<anyhow::Result<_>>()?;
             Ok(Val::Tuple(vs))

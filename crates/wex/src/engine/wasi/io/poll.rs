@@ -101,7 +101,7 @@ impl Host for Ctx {
                         let mut shutdown = self.shutdown.clone();
                         Box::pin(async move { shutdown.changed().await })
                     });
-                    if let Err(..) = ready!(fut.as_mut().poll(cx)) {
+                    if ready!(fut.as_mut().poll(cx)).is_err() {
                         debug!("forcing shutdown");
                         return Poll::Ready(Err(anyhow!("forced shutdown in `wasi:io/poll#poll`")));
                     }

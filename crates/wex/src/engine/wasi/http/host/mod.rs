@@ -13,7 +13,7 @@ fn get_fields<'a>(
     fields: &Resource<WithChildren<http::HeaderMap>>,
 ) -> wasmtime::Result<&'a WithChildren<http::HeaderMap>> {
     table
-        .get(&fields)
+        .get(fields)
         .context("failed to get fields from table")
 }
 
@@ -30,7 +30,7 @@ fn get_fields_mut<'a>(
     fields: &Resource<WithChildren<http::HeaderMap>>,
 ) -> wasmtime::Result<&'a mut WithChildren<http::HeaderMap>> {
     table
-        .get_mut(&fields)
+        .get_mut(fields)
         .context("failed to get fields from table")
 }
 

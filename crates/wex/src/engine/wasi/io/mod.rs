@@ -593,7 +593,7 @@ impl OutputStream {
             Self::TcpStream(stream) => {
                 let mut contents = contents.as_slice();
                 loop {
-                    match stream.try_write(&contents) {
+                    match stream.try_write(contents) {
                         Ok(n) => {
                             if n == contents.len() {
                                 return Ok(Ok(()));
@@ -613,7 +613,7 @@ impl OutputStream {
             Self::UdpSocket(socket) => {
                 let mut contents = contents.as_slice();
                 loop {
-                    match socket.try_send(&contents) {
+                    match socket.try_send(contents) {
                         Ok(n) => {
                             if n == contents.len() {
                                 return Ok(Ok(()));
@@ -740,20 +740,20 @@ impl InputStream {
                 match stream.try_read(&mut buf) {
                     Ok(0) => {
                         if len == 0 {
-                            return Ok(Ok(Vec::default()));
+                            Ok(Ok(Vec::default()))
                         } else {
-                            return Ok(Err(None));
+                            Ok(Err(None))
                         }
                     }
                     Ok(n) => {
                         buf.truncate(n);
-                        return Ok(Ok(buf));
+                        Ok(Ok(buf))
                     }
                     Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                        return Ok(Ok(Vec::default()))
+                        Ok(Ok(Vec::default()))
                     }
                     Err(err) => {
-                        return Ok(Err(Some(Error::Sockets(err.into()))));
+                        Ok(Err(Some(Error::Sockets(err.into()))))
                     }
                 }
             }
@@ -810,8 +810,8 @@ impl InputStream {
     fn subscribe(&mut self) -> wasmtime::Result<Pollable> {
         match self {
             InputStream::Empty => Ok(Pollable::Ready),
-            InputStream::TcpStream(stream) => Ok(Pollable::TcpStreamReadable(Arc::clone(&stream))),
-            InputStream::UdpSocket(socket) => Ok(Pollable::UdpSocketReadable(Arc::clone(&socket))),
+            InputStream::TcpStream(stream) => Ok(Pollable::TcpStreamReadable(Arc::clone(stream))),
+            InputStream::UdpSocket(socket) => Ok(Pollable::UdpSocketReadable(Arc::clone(socket))),
             InputStream::Http(mutex) => todo!(),
             InputStream::Bytes(bytes) => todo!(),
             InputStream::AsyncRead(async_read_input_stream) => todo!(),

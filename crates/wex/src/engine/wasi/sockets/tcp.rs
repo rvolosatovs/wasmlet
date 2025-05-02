@@ -577,7 +577,7 @@ impl TcpSocket {
             Ok(TcpState::ListenStarted(listener) | TcpState::Listening { listener, .. }) => {
                 // Try to update the backlog by calling `listen` again.
                 // Not all platforms support this. We'll only update our own value if the OS supports changing the backlog size after the fact.
-                if rustix::net::listen(&listener, value.try_into().unwrap_or(i32::MAX)).is_err() {
+                if rustix::net::listen(listener, value.try_into().unwrap_or(i32::MAX)).is_err() {
                     return Err(ErrorCode::NotSupported);
                 }
                 self.listen_backlog_size = value;
@@ -782,7 +782,7 @@ fn bind(socket: &tokio::net::TcpSocket, local_address: SocketAddr) -> Result<(),
     // This ensures we're not accidentally affected by any socket option
     // state left behind by a previous failed call to this method.
     #[cfg(not(windows))]
-    if let Err(err) = sockopt::set_socket_reuseaddr(&socket, local_address.port() > 0) {
+    if let Err(err) = sockopt::set_socket_reuseaddr(socket, local_address.port() > 0) {
         return Err(err.into());
     }
 

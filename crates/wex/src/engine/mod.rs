@@ -288,7 +288,7 @@ fn compile_component(
     wasm: &[u8],
     adapter: &[u8],
 ) -> anyhow::Result<Component> {
-    if wasmparser::Parser::is_core_wasm(&wasm) {
+    if wasmparser::Parser::is_core_wasm(wasm) {
         let enc = wit_component::ComponentEncoder::default()
             .validate(true)
             .module(wasm)
@@ -614,7 +614,7 @@ impl Engine {
                 })
                 .unwrap_or_else(|| {
                     debug!("initializing a new instance");
-                    let mut store = self.new_store(execution_time_ms, shutdown.clone());
+                    let store = self.new_store(execution_time_ms, shutdown.clone());
                     PooledInstance::Pre {
                         pre: pre.clone(),
                         store,
@@ -754,7 +754,7 @@ impl Engine {
         let (invocations_tx, invocations_rx) = mpsc::channel(max_instances);
         let shutdown = state.shutdown.subscribe();
         let thread = thread_builder
-            .spawn_scoped(&s, {
+            .spawn_scoped(s, {
                 move || {
                     runtime.block_on(
                         self.handle_workload(
@@ -952,7 +952,7 @@ impl Engine {
         let span = info_span!("handle_service", name);
         let thread = thread::Builder::new()
             .name(thread_name)
-            .spawn_scoped(&s, {
+            .spawn_scoped(s, {
                 move || {
                     runtime.block_on(
                         self.handle_service(shutdown, store, cmd, pre)
@@ -1023,10 +1023,10 @@ impl Engine {
                         .build()
                         .context("failed to build plugin Tokio runtime")?;
                     let thread_builder = thread::Builder::new().name(thread_name);
-                    let (invocations_tx, mut invocations_rx) = mpsc::channel(64);
+                    let (invocations_tx, invocations_rx) = mpsc::channel(64);
                     let span = info_span!("handle_plugin", name);
                     let thread = thread_builder
-                        .spawn_scoped(&s, {
+                        .spawn_scoped(s, {
                             move || {
                     //            let handle = runtime.handle();
                     //            handle.block_on(
@@ -1193,7 +1193,7 @@ impl Engine {
                             continue;
                         }
                         WorkloadPre::Resolved(resolved) => {
-                            workload.resolve_workload_import(&name, ty, target, &resolved)?
+                            workload.resolve_workload_import(&name, ty, target, resolved)?
                         }
                         WorkloadPre::Taken => bail!("cycle in workload resolution"),
                     }

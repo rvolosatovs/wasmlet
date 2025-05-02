@@ -1,15 +1,14 @@
 use core::ffi::{c_char, c_void, CStr};
-use core::sync::atomic::{AtomicU64, Ordering};
 
 use async_ffi::{FfiFuture, FutureExt as _};
 
-pub const VERSION: &'static CStr = c"0.1.0";
+pub const VERSION: &CStr = c"0.1.0";
 
 static mut X: usize = 0;
 
 #[no_mangle]
 pub extern "C" fn hello() -> usize {
-    unsafe { X = X + 1 };
+    unsafe { X += 1 };
     unsafe { X }
 }
 

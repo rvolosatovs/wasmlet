@@ -12,7 +12,6 @@ mod bindings {
 
 use bindings::exports::wex_examples::db::handler;
 
-use core::sync::atomic::Ordering;
 
 use std::sync::OnceLock;
 

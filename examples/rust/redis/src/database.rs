@@ -303,7 +303,7 @@ impl GuestCommandSink for CommandSink {
         buffer.reserve(size);
         let n = commands.len().try_into().unwrap_or(u32::MAX);
         for command in &commands[..n as _] {
-            extend_encode(&mut buffer, &command, false).map_err(|err| err.to_string())?;
+            extend_encode(&mut buffer, command, false).map_err(|err| err.to_string())?;
         }
         Ok(n)
     }
