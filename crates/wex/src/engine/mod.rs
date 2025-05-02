@@ -1,4 +1,5 @@
 pub mod bindings;
+pub mod resource_types;
 pub mod wasi;
 mod workload;
 
@@ -40,39 +41,6 @@ use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 use self::wasi::cli::I32Exit;
 pub use self::workload::Ctx;
 use self::workload::{handle_dynamic, handle_http};
-
-pub mod resource_types {
-    use wasmtime::component::ResourceType;
-
-    use crate::engine::wasi;
-
-    pub type InputStream = wasi::io::InputStream;
-    pub type IoError = wasi::io::Error;
-    pub type OutputStream = wasi::io::OutputStream;
-    pub type Pollable = wasi::io::Pollable;
-
-    pub type TcpSocket = wasi::sockets::tcp::TcpSocket;
-
-    pub fn input_stream() -> ResourceType {
-        ResourceType::host::<InputStream>()
-    }
-
-    pub fn io_error() -> ResourceType {
-        ResourceType::host::<IoError>()
-    }
-
-    pub fn output_stream() -> ResourceType {
-        ResourceType::host::<OutputStream>()
-    }
-
-    pub fn pollable() -> ResourceType {
-        ResourceType::host::<Pollable>()
-    }
-
-    pub fn tcp_socket() -> ResourceType {
-        ResourceType::host::<TcpSocket>()
-    }
-}
 
 pub trait ResourceView {
     fn table(&mut self) -> &mut ResourceTable;
@@ -875,9 +843,6 @@ impl Engine {
                     } else {
                         error!(?err, "failed to run service")
                     }
-                }
-                Err(err) => {
-                    error!(?err, "failed to call `wasi:cli/run#run` on the service")
                 }
             }
 
