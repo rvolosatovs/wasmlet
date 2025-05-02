@@ -752,9 +752,7 @@ impl InputStream {
                     Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
                         Ok(Ok(Vec::default()))
                     }
-                    Err(err) => {
-                        Ok(Err(Some(Error::Sockets(err.into()))))
-                    }
+                    Err(err) => Ok(Err(Some(Error::Sockets(err.into())))),
                 }
             }
             InputStream::UdpSocket(socket) => todo!(),

@@ -12,9 +12,7 @@ fn get_fields<'a>(
     table: &'a ResourceTable,
     fields: &Resource<WithChildren<http::HeaderMap>>,
 ) -> wasmtime::Result<&'a WithChildren<http::HeaderMap>> {
-    table
-        .get(fields)
-        .context("failed to get fields from table")
+    table.get(fields).context("failed to get fields from table")
 }
 
 fn get_fields_inner<'a>(

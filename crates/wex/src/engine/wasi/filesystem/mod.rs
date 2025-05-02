@@ -741,8 +741,11 @@ impl Descriptor {
             return Err(ErrorCode::Unsupported);
         }
 
-        if oflags.contains(OpenFlags::DIRECTORY) && (oflags.contains(OpenFlags::CREATE)
-                || oflags.contains(OpenFlags::EXCLUSIVE) || oflags.contains(OpenFlags::TRUNCATE)) {
+        if oflags.contains(OpenFlags::DIRECTORY)
+            && (oflags.contains(OpenFlags::CREATE)
+                || oflags.contains(OpenFlags::EXCLUSIVE)
+                || oflags.contains(OpenFlags::TRUNCATE))
+        {
             return Err(ErrorCode::Invalid);
         }
 

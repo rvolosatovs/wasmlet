@@ -482,18 +482,14 @@ impl Host {
                             })),
                         }
                     }
-                    Err(mpsc::error::TrySendError::Full(..)) => {
-                        build_http_response(
-                            http::StatusCode::SERVICE_UNAVAILABLE,
-                            "engine buffer full",
-                        )
-                    }
-                    Err(mpsc::error::TrySendError::Closed(..)) => {
-                        build_http_response(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            "engine thread exited",
-                        )
-                    }
+                    Err(mpsc::error::TrySendError::Full(..)) => build_http_response(
+                        http::StatusCode::SERVICE_UNAVAILABLE,
+                        "engine buffer full",
+                    ),
+                    Err(mpsc::error::TrySendError::Closed(..)) => build_http_response(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        "engine thread exited",
+                    ),
                 }
             }
         };

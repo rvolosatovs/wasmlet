@@ -8,11 +8,11 @@ use crate::engine::bindings::wasi::sockets::ip_name_lookup::{
     ErrorCode, Host, HostResolveAddressStream,
 };
 use crate::engine::bindings::wasi::sockets::network::{self, IpAddress};
+use crate::engine::wasi::io::Pollable;
 use crate::engine::wasi::sockets::util::{from_ipv4_addr, from_ipv6_addr};
 use crate::engine::wasi::sockets::{
     Network, ResolveAddressStream, WasiSocketsImpl, WasiSocketsView,
 };
-use crate::engine::wasi::io::Pollable;
 
 impl<T> HostResolveAddressStream for WasiSocketsImpl<&mut T>
 where

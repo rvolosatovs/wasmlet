@@ -12,7 +12,6 @@ mod bindings {
 
 use bindings::exports::wex_examples::db::handler;
 
-
 use std::sync::OnceLock;
 
 use wasi::io::poll::Pollable;
