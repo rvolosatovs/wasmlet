@@ -729,11 +729,6 @@ dependencies = [
 [[package]]
 name = "example-plugin"
 version = "0.1.0"
-dependencies = [
- "wasmtime",
- "wex-cli",
- "wex-plugin",
-]
 
 [[package]]
 name = "example-redis"

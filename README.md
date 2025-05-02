@@ -9,9 +9,11 @@ $ cargo build -p example-memdb --target wasm32-wasip2 --release
 $ cargo build -p example-redis --target wasm32-wasip2 --release
 $ cargo build -p example-redis-http --target wasm32-wasip2 --release
 $ cargo build -p example-sockets --target wasm32-wasip2 --release
+$ cargo build -p example-plugin
 $ cargo run -- --http-proxy 127.0.0.1:8080
 $ curl -H "X-Wex-Id: redis-http" "localhost:8080/set?key=hello&value=world"
 $ curl -H "X-Wex-Id: redis-http" "localhost:8080/get?key=hello"
 $ curl -H "X-Wex-Id: redis-http" "localhost:8080/incr?key=counter"
 $ curl -H "X-Wex-Id: redis-http" "localhost:8080/get?key=counter"
+$ curl -H "X-Wex-Id: f1-plug" "localhost:8080"
 ```

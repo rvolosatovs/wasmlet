@@ -1,10 +1,9 @@
 # TODO: Version
 #version = "0.1.0-draft"
 
-#[plugins.couchbase]
-#type = "dylib"
-##src = "../wex.go/couchbase/couchbase"
-#src = "example_plugin"
+[plugins.example]
+src = "example_plugin"
+#src = "../wex.go/couchbase/couchbase"
 
 #[services.sockets]
 #src = "./target/wasm32-wasip2/release/example-sockets.wasm"
@@ -19,10 +18,6 @@ instances = 1
 
 [workloads.f1]
 src = "./target/wasm32-wasip2/release/example_f1.wasm"
-pool = 1
-
-[workloads.f1.limits]
-instances = 200
 
 [workloads.f1.imports."wex-examples:hello/handler"]
 type = "workload"
@@ -42,6 +37,13 @@ target = "redis"
 [workloads.f2.imports."wex-examples:redis/pool"]
 type = "workload"
 target = "redis"
+
+[workloads.f1-plug]
+src = "./target/wasm32-wasip2/release/example_f1.wasm"
+
+[workloads.f1-plug.imports."wex-examples:hello/handler"]
+type = "plugin"
+target = "example"
 
 [workloads.redis]
 src = "./target/wasm32-wasip2/release/example_redis.wasm"

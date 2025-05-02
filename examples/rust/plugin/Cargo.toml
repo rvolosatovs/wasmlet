@@ -12,6 +12,3 @@ repository.workspace = true
 crate-type = ["dylib"]
 
 [dependencies]
-wasmtime = { workspace = true }   # only required do to a bug in wasmtime bindgen
-wex-cli = { workspace = true }
-wex-plugin = { workspace = true }
