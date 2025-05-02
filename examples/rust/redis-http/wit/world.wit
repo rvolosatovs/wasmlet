@@ -1,0 +1,8 @@
+package wex-examples:rust-redis-http;
+
+world component {
+    include wex-examples:redis/client;
+
+    import wex-examples:redis/resp3;
+    import wex-examples:redis/pool;
+}

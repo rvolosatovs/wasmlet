@@ -1,0 +1,5 @@
+package wex-examples:rust-f1;
+
+world component {
+    include wex-examples:hello/client;
+}

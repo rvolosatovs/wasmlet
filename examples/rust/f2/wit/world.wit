@@ -1,0 +1,9 @@
+package wex-examples:rust-f2;
+
+world component {
+    include wex-examples:hello/server;
+    include wex-examples:redis/client;
+
+    import wex-examples:redis/resp3;
+    import wex-examples:redis/pool;
+}

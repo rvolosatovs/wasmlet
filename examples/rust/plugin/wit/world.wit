@@ -1,0 +1,5 @@
+package wex-examples:plugin;
+
+world component {
+    include wex-examples:db/client;
+}

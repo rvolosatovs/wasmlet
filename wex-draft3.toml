@@ -1,0 +1,126 @@
+# TODO: Version
+#version = "0.1.0-draft"
+
+#[plugins.couchbase]
+#type = "dylib"
+##src = "../wex.go/couchbase/couchbase"
+#src = "example_plugin"
+
+#[services.sockets]
+#src = "./target/wasm32-wasip2/release/example-sockets.wasm"
+
+[workloads.spinloop]
+src = "./target/wasm32-wasip2/release/example_spinloop.wasm"
+pool = 1
+
+[workloads.spinloop.limits]
+execution-time-ms = 100
+instances = 1
+
+[workloads.f1]
+src = "./target/wasm32-wasip2/release/example_f1.wasm"
+pool = 1
+
+[workloads.f1.limits]
+instances = 200
+
+[workloads.f1.linux.cgroup]
+type = "none"
+
+# type = "host"
+# path = "/path/to/cgroup"
+
+# type = "dynamic"
+# TODO: set CPU limits
+
+[workloads.f1.linux.namespace]
+#ipc = "/path/to/ipcns"
+#network = "/path/to/netns"
+#uts = "/path/to/utsns"
+
+[workloads.f1.filesystem.mounts."/"]
+type = "host"
+path = "/tmp/fs"
+mode = "ro"
+
+[workloads.f1.filesystem.mounts."/foo"]
+type = "host"
+path = "/tmp/foo"
+mode = "rw"
+
+#[workloads.f1.sockets.tcp.ipv4.loopback]
+#type = "host"
+
+#type = "local" # default
+
+[workloads.f1.sockets.tcp.ipv4]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"        # run in host namespace
+address = "10.0.0.1" # 0.0.0.0 binds to 10.0.0.1, no other address is allowed to be bound
+
+[workloads.f1.sockets.tcp.ipv6]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"   # run in host namespace
+address = "::2"
+
+[workloads.f1.sockets.udp.ipv4]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"        # run in host namespace
+address = "10.0.0.2"
+
+[workloads.f1.sockets.udp.ipv6]
+#type = "none" # default, no outside-world facing interfaces
+type = "host"   # run in host namespace
+address = "::3"
+
+[workloads.f1.sockets.dns]
+#type = "none" # default, no DNS
+type = "host"
+
+[workloads.f1.imports."wex-examples:hello/handler"]
+type = "workload"
+target = "f2"
+
+[workloads.f2]
+src = "./target/wasm32-wasip2/release/example_f2.wasm"
+
+[workloads.f2.imports."wex-examples:redis/database"]
+type = "workload"
+target = "redis"
+
+[workloads.f2.imports."wex-examples:redis/resp3"]
+type = "workload"
+target = "redis"
+
+[workloads.f2.imports."wex-examples:redis/pool"]
+type = "workload"
+target = "redis"
+
+[workloads.redis]
+src = "./target/wasm32-wasip2/release/example_redis.wasm"
+pool = 1
+
+[workloads.redis.limits]
+instances = 1
+
+[workloads.redis-http]
+src = "./target/wasm32-wasip2/release/example_redis_http.wasm"
+
+[workloads.redis-http.imports."wex-examples:redis/database"]
+type = "workload"
+target = "redis"
+
+[workloads.redis-http.imports."wex-examples:redis/resp3"]
+type = "workload"
+target = "redis"
+
+[workloads.redis-http.imports."wex-examples:redis/pool"]
+type = "workload"
+target = "redis"
+
+[workloads.db]
+src = "./target/wasm32-wasip2/release/example_memdb.wasm"
+pool = 1
+
+[workloads.db.limits]
+instances = 1

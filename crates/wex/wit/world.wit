@@ -1,11 +1,6 @@
-package wex:runtime;
-
-world messaging-guest {
-    export wasi:messaging/incoming-handler@0.2.0-draft;
-}
+package wex:engine;
 
 world imports {
-    include wasi:keyvalue/imports@0.2.0-draft;
-    include wasi:messaging/imports-request-reply@0.2.0-draft;
-    include wasi:sockets/imports@0.2.2;
+    include wasi:cli/imports@0.2.5;
+    include wasi:http/imports@0.2.5;
 }

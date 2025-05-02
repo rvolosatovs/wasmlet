@@ -1,4 +1,4 @@
-package wex-examples:messaging;
+package wex-examples:rust-messaging;
 
 world handler {
     export wasi:messaging/incoming-handler@0.2.0-draft;

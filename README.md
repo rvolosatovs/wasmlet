@@ -2,10 +2,16 @@
 
 This is just a PoC for now, to try it out, try this from the root of the repo:
 
-> NOTE: This is outdated
-
 ```
-cargo build -p example-messaging --target wasm32-wasip2 --release
-cargo run --release -p wex ./target/wasm32-wasip2/release/example_messaging.wasm
-nats pub 'foo.bar.baz.test' 'test'
+$ cargo build -p example-f1 --target wasm32-wasip2 --release
+$ cargo build -p example-f2 --target wasm32-wasip2 --release
+$ cargo build -p example-memdb --target wasm32-wasip2 --release
+$ cargo build -p example-redis --target wasm32-wasip2 --release
+$ cargo build -p example-redis-http --target wasm32-wasip2 --release
+$ cargo build -p example-sockets --target wasm32-wasip2 --release
+$ cargo run
+$ curl -H "X-Wex-Id: redis-http" "localhost:8080/set?key=hello&value=world"
+$ curl -H "X-Wex-Id: redis-http" "localhost:8080/get?key=hello"
+$ curl -H "X-Wex-Id: redis-http" "localhost:8080/incr?key=counter"
+$ curl -H "X-Wex-Id: redis-http" "localhost:8080/get?key=counter"
 ```

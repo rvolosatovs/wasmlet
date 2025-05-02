@@ -1,0 +1,205 @@
+package wex-examples:redis;
+
+interface resp2 {
+    use database.{frame};
+
+    resource indirect-value {
+        unwrap: static func(this: indirect-value) -> value;
+    }
+
+    variant value {
+        simple-string(list<u8>),
+        simple-error(string),
+        integer(s64),
+        bulk-string(list<u8>),
+        array(list<indirect-value>),
+    }
+
+    into-value: func(frame: frame) -> result<value, string>;
+}
+
+interface resp3 {
+    use database.{frame};
+
+    resource indirect-value {
+        unwrap: static func(this: indirect-value) -> value;
+    }
+
+    variant verbatim-format {
+        markdown,
+        text,
+        unknown(string),
+    }
+
+    record verbatim-string {
+        format: verbatim-format,
+        data: list<u8>,
+    }
+
+    variant value {
+        blob-string(list<u8>),
+        simple-string(list<u8>),
+        simple-error(string),
+        number(s64),
+        null,
+        double(f64),
+        boolean(bool),
+        blob-error(list<u8>),
+        verbatim-string(verbatim-string),
+        big-number(list<u8>),
+        array(list<indirect-value>),
+        map(list<tuple<indirect-value, indirect-value>>),
+        set(list<indirect-value>),
+        attributes(list<tuple<indirect-value, indirect-value>>),
+    }
+
+    variant frame-value {
+        value(value),
+        push(list<indirect-value>),
+    }
+
+    into-value: func(frame: frame) -> result<frame-value, string>;
+}
+
+interface commands {
+    variant command {
+        discard,
+        exec,
+        get(get),
+        hello(hello),
+        incr(incr),
+        multi,
+        ping(ping),
+        publish(publish),
+        quit,
+        set(set),
+        unwatch,
+        watch(watch),
+    }
+
+    record get {
+        key: string,
+    }
+
+    record hello {
+        protover: option<string>,
+        auth: option<tuple<string, string>>,
+        setname: option<string>,
+    }
+
+    record incr {
+        key: string,
+    }
+
+    record ping {
+        message: option<string>,
+    }
+
+    record publish {
+        channel: string,
+        message: string,
+    }
+
+    flags set-options {
+        nx,
+        xx,
+        get,
+        keepttl,
+    }
+
+    record set {
+        key: string,
+        value: string,
+        ex: option<u64>,
+        px: option<u64>,
+        exat: option<u64>,
+        pxat: option<u64>,
+        options: set-options,
+    }
+
+    record watch {
+        keys: list<string>
+    }
+}
+
+interface database {
+    use wasi:io/poll@0.2.5.{pollable};
+    use wasi:io/streams@0.2.5.{input-stream, output-stream, stream-error};
+    use wasi:sockets/network@0.2.5.{error-code as network-error};
+    use wasi:sockets/tcp@0.2.5.{tcp-socket};
+
+    use commands.{command};
+
+    resource command-sink {
+        constructor(tx: output-stream);
+
+        // false if buffer is full
+        feed: func(command: command) -> result<bool, string>;
+        feed-many: func(commands: list<command>) -> result<u32, string>;
+        buffered-bytes: func() -> u32;
+
+        subscribe: func() -> pollable;
+        write: func() -> result<_, stream-error>;
+    }
+
+    resource frame {}
+
+    variant frame-stream-error {
+        decode(string),
+        io(stream-error),
+    }
+
+    resource frame-stream {
+        constructor(rx: input-stream);
+
+        use-resp2: func() -> result;
+        use-resp3: func() -> result;
+
+        next: func() -> option<frame>;
+        next-many: func(limit: u32) -> list<frame>;
+        buffered-frames: func() -> u32;
+        unparsed-bytes: func() -> u32;
+
+        subscribe: func() -> pollable;
+        // false if buffer is full
+        read: func() -> result<bool, frame-stream-error>;
+
+        // returns buffered frames, non-zero u32 if there are unparsed bytes
+        finish: static func(this: frame-stream) -> result<list<frame>, u32>;
+    }
+
+    record active-connection {
+        socket: tcp-socket,
+        frames: frame-stream,
+        commands: command-sink,
+    }
+
+    resource pending-connection {
+        subscribe: func() -> pollable;
+
+        finish: static func(this: pending-connection) -> result<active-connection, network-error>;
+    }
+    connect: func() -> result<pending-connection, network-error>;
+}
+
+interface pool {
+    use wasi:sockets/network@0.2.5.{error-code as network-error};
+
+    use database.{pending-connection, active-connection};
+
+    variant connection {
+        pending(pending-connection),
+        active(active-connection),
+    }
+
+    get: func() -> result<connection, network-error>;
+    put: func(connection: active-connection);
+}
+
+world client {
+    import database;
+}
+
+world server {
+    export database;
+}

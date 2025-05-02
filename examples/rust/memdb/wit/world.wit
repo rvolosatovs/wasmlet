@@ -1,0 +1,5 @@
+package wex-examples:rust-memdb;
+
+world component {
+    include wex-examples:db/server;
+}

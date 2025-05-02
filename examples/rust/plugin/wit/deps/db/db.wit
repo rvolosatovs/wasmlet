@@ -1,0 +1,17 @@
+package wex-examples:db;
+
+interface handler {
+    resource database {
+        fetch-add: func() -> u64;
+    }
+
+    connect: func() -> result<database>;
+}
+
+world client {
+    import handler;
+}
+
+world server {
+    export handler;
+}
