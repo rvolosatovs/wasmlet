@@ -18,7 +18,6 @@ use std::thread::{self, ScopedJoinHandle};
 
 use anyhow::{anyhow, bail, ensure, Context as _};
 use async_ffi::FfiFuture;
-use bindings::exports::wasi::cli::{Command, CommandPre};
 use bytes::Bytes;
 use libloading::{Library, Symbol};
 use tokio::sync::{mpsc, oneshot, watch, Semaphore, SemaphorePermit};
@@ -38,6 +37,7 @@ use wasmtime_wasi::ResourceTable;
 
 use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 
+use self::bindings::exports::wasi::cli::{Command, CommandPre};
 use self::wasi::cli::I32Exit;
 pub use self::workload::Ctx;
 use self::workload::{handle_dynamic, handle_http};
