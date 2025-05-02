@@ -1,13 +1,14 @@
 #![allow(unused)] // TODO: Remove
 
+use core::ffi::c_char;
+use core::fmt::Debug;
 use core::iter::zip;
 use core::mem;
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
+use core::sync::atomic::{AtomicBool, Ordering};
 use core::task::Waker;
 use core::time::Duration;
-use core::{ffi::c_char, sync::atomic::AtomicBool};
-use core::{fmt::Debug, sync::atomic::Ordering};
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
@@ -22,12 +23,12 @@ use http_body_util::combinators::BoxBody;
 use libloading::{Library, Symbol};
 use quanta::Clock;
 use tokio::net::TcpStream;
-use tokio::sync::{broadcast, watch, SemaphorePermit};
-use tokio::sync::{mpsc, oneshot, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{
+    broadcast, mpsc, oneshot, watch, Notify, OwnedSemaphorePermit, Semaphore, SemaphorePermit,
+};
+use tokio::task::JoinSet;
 use tokio::time::sleep;
-use tokio::{sync::Notify, task::JoinSet};
 use tracing::{debug, debug_span, error, info, info_span, instrument, warn, Instrument as _, Span};
-use wasi::{cli::I32Exit, http::ErrorCode};
 use wasi_preview1_component_adapter_provider::{
     WASI_SNAPSHOT_PREVIEW1_ADAPTER_NAME, WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER,
     WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER,
@@ -46,7 +47,8 @@ mod workload;
 
 use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 
-use self::wasi::http::{IncomingBody, WasiHttpCtx};
+use self::wasi::cli::I32Exit;
+use self::wasi::http::{ErrorCode, IncomingBody, WasiHttpCtx};
 pub use self::workload::Ctx;
 use self::workload::{handle_dynamic, handle_http};
 
