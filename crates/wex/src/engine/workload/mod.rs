@@ -1,10 +1,7 @@
 use core::fmt::{self, Debug};
-use std::sync::Arc;
 
-use anyhow::{bail, Context as _};
-use bytes::Bytes;
-use http_body_util::{combinators::BoxBody, BodyExt as _};
-use tokio::sync::{mpsc::UnboundedSender, oneshot, watch, Mutex, OwnedSemaphorePermit, Semaphore};
+use anyhow::Context as _;
+use tokio::sync::watch;
 use tracing::{debug, instrument, trace};
 use wasmtime::component::{ComponentExportIndex, Instance, ResourceTable, Val};
 use wasmtime::Store;
@@ -12,7 +9,6 @@ use wasmtime::Store;
 use crate::engine::wasi::cli::{WasiCliCtx, WasiCliView};
 use crate::engine::wasi::clocks::{WasiClocksCtx, WasiClocksView};
 use crate::engine::wasi::filesystem::{WasiFilesystemCtx, WasiFilesystemView};
-use crate::engine::wasi::http::empty_body;
 use crate::engine::wasi::http::{WasiHttpCtx, WasiHttpView};
 use crate::engine::wasi::random::{WasiRandomCtx, WasiRandomView};
 use crate::engine::wasi::sockets::{WasiSocketsCtx, WasiSocketsView};

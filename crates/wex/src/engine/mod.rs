@@ -1,13 +1,13 @@
-#![allow(unused)] // TODO: Remove
+pub mod bindings;
+pub mod wasi;
+mod workload;
 
 use core::ffi::c_char;
 use core::fmt::Debug;
-use core::iter::zip;
 use core::mem;
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicBool, Ordering};
-use core::task::Waker;
 use core::time::Duration;
 
 use std::collections::{BTreeMap, HashMap};
@@ -19,13 +19,8 @@ use anyhow::{anyhow, bail, ensure, Context as _};
 use async_ffi::FfiFuture;
 use bindings::exports::wasi::cli::{Command, CommandPre};
 use bytes::Bytes;
-use http_body_util::combinators::BoxBody;
 use libloading::{Library, Symbol};
-use quanta::Clock;
-use tokio::net::TcpStream;
-use tokio::sync::{
-    broadcast, mpsc, oneshot, watch, Notify, OwnedSemaphorePermit, Semaphore, SemaphorePermit,
-};
+use tokio::sync::{mpsc, oneshot, watch, Semaphore, SemaphorePermit};
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::{debug, debug_span, error, info, info_span, instrument, warn, Instrument as _, Span};
@@ -38,17 +33,11 @@ use wasmtime::component::{
     ResourceAny, ResourceType, Val,
 };
 use wasmtime::{AsContextMut, Store, UpdateDeadline};
-use wasmtime_wasi::{ResourceTable, WasiCtxBuilder};
-use wasmtime_wasi_http::body::HyperOutgoingBody;
-
-pub mod bindings;
-pub mod wasi;
-mod workload;
+use wasmtime_wasi::ResourceTable;
 
 use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 
 use self::wasi::cli::I32Exit;
-use self::wasi::http::{ErrorCode, IncomingBody, WasiHttpCtx};
 pub use self::workload::Ctx;
 use self::workload::{handle_dynamic, handle_http};
 
