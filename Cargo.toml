@@ -87,7 +87,6 @@ wasi-preview1-component-adapter-provider = { version = "32", default-features = 
 wasmparser = { version = "0.229", default-features = false }
 wasmtime = { version = "32", default-features = false }
 wasmtime-wasi = { version = "32", default-features = false }
-wasmtime-wasi-http = { version = "32", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
 wex = { path = "./crates/wex" }
 wex-cli = { path = "./." }

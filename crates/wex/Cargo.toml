@@ -23,7 +23,7 @@ futures = { workspace = true }
 http = { workspace = true }
 http-body = { workspace = true }
 http-body-util = { workspace = true }
-hyper = { workspace = true }
+hyper = { workspace = true, features = ["client"] }
 hyper-util = { workspace = true, features = [
     "http1",
     "http2",
@@ -67,6 +67,5 @@ wasmtime = { workspace = true, features = [
     "threads",
 ] }
 wasmtime-wasi = { workspace = true }
-wasmtime-wasi-http = { workspace = true }
 webpki-roots = { workspace = true }
 wit-component = { workspace = true }

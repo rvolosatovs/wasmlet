@@ -4,9 +4,9 @@ use core::time::Duration;
 use bytes::Bytes;
 use http::uri::Scheme;
 use http_body_util::BodyExt as _;
+use hyper_util::rt::TokioIo;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
-use wasmtime_wasi_http::io::TokioIo;
 
 use crate::engine::bindings::wasi::http::types::{DnsErrorPayload, ErrorCode};
 use crate::engine::wasi::http::{IncomingResponseBody, RequestOptions};

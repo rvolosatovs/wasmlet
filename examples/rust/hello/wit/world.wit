@@ -1,0 +1,15 @@
+package wex-examples:rust-hello;
+
+interface test {
+    stringin: func(p: string);
+    numbers: func(p: u64) -> u32;
+    lists: func(p: list<u32>) -> list<u32>;
+    small: func(a: u8, b: u16, c: u32, aa: s8, bb: s16) -> tuple<u8, u16, u32>;
+    floats: func(a: f32, b: f64) -> tuple<f32, f64>;
+}
+
+world component {
+    include wex-examples:hello/server;
+
+    export test;
+}

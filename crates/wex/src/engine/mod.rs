@@ -31,15 +31,11 @@ use wasi_preview1_component_adapter_provider::{
     WASI_SNAPSHOT_PREVIEW1_ADAPTER_NAME, WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER,
     WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER,
 };
-use wasmtime::{
-    component::{
-        types, Component, ComponentExportIndex, Instance, InstancePre, Linker, LinkerInstance,
-        ResourceAny, ResourceType, Val,
-    },
-    StoreContextMut,
+use wasmtime::component::{
+    types, Component, ComponentExportIndex, Instance, InstancePre, Linker, LinkerInstance,
+    ResourceAny, ResourceTable, ResourceType, Val,
 };
-use wasmtime::{AsContextMut, Store, UpdateDeadline};
-use wasmtime_wasi::ResourceTable;
+use wasmtime::{AsContextMut, Store, StoreContextMut, UpdateDeadline};
 
 use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 
@@ -293,8 +289,44 @@ extern "C" fn write_string(val: *mut Val, data: *const c_char) -> bool {
 }
 
 struct Plugin {
-    lib: Library,
     add_to_linker: AddToLinkerFn,
+    _lib: Library,
+}
+
+impl Plugin {
+    pub fn load(src: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let src = src.as_ref();
+        let lib =
+            if src.has_root() || src.extension().is_some() || src.parent() != Some(Path::new("")) {
+                unsafe { Library::new(src) }
+            } else {
+                unsafe { Library::new(library_filename(src)) }
+            }
+            .context("failed to load dynamic library")?;
+
+        let init_plugin = unsafe { lib.get::<InitPluginFn>(b"wex_plugin_init") }
+            .context("failed to lookup `wex_plugin_init`")?;
+        if !unsafe {
+            init_plugin(PluginConfig {
+                version: 0,
+                // TODO: Set config
+                config: null(),
+                func_new,
+                func_new_async,
+                write_string,
+            })
+        } {
+            bail!("failed to initialize plugin");
+        }
+
+        let add_to_linker = unsafe { lib.get::<AddToLinkerFn>(b"wex_plugin_add_to_linker") }
+            .context("failed to lookup `wex_plugin_add_to_linker`")?;
+        let add_to_linker = *add_to_linker;
+        Ok(Self {
+            _lib: lib,
+            add_to_linker,
+        })
+    }
 }
 
 async fn handle_workload_import(
@@ -523,10 +555,11 @@ impl CompiledWorkload {
 
                     let instance_name_c =
                         CString::new(&*instance_name).context("failed to construct C string")?;
+                    let engine = self.component.engine();
                     if !unsafe {
                         add_to_linker(
                             &AddToLinkerCtx::Workload { name },
-                            self.component.engine(),
+                            engine,
                             &mut linker,
                             instance_name_c.as_ptr(),
                             &ty,
@@ -1063,46 +1096,9 @@ impl Engine {
             .into_iter()
             .map(|(name, conf)| match conf {
                 config::Plugin { src } => {
-                    let path = Path::new(&*src);
-                    let lib = if path.has_root()
-                        || path.extension().is_some()
-                        || path.parent() != Some(Path::new(""))
-                    {
-                        unsafe { Library::new(path) }
-                    } else {
-                        unsafe { Library::new(library_filename(&*src)) }
-                    }
-                    .with_context(|| format!("failed to load dynamic library by `{src}`"))?;
-
-                    let init_plugin: Symbol<InitPluginFn> = unsafe {
-                        lib.get(b"wex_plugin_init").with_context(|| {
-                            format!("failed to lookup `wex_plugin_init` in dynamic library `{src}`")
-                        })?
-                    };
-                    if !unsafe { init_plugin(PluginConfig{
-                        version: 0,
-                        // TODO: Set config
-                        config: null(),
-                        func_new,
-                        func_new_async,
-                        write_string,
-                    }) } {
-                        bail!("failed to initialize plugin");
-                    }
-
-                    let add_to_linker: Symbol<AddToLinkerFn> = unsafe {
-                        lib.get(b"wex_plugin_add_to_linker").with_context(|| {
-                            format!("failed to lookup `wex_plugin_add_to_linker` in dynamic library `{src}`")
-                        })?
-                    };
-                    let add_to_linker = *add_to_linker;
-                    Ok((
-                        name,
-                        Plugin {
-                            lib,
-                            add_to_linker,
-                        },
-                    ))
+                    let plugin = Plugin::load(&*src)
+                        .with_context(|| format!("failed to load plugin `{src}`"))?;
+                    Ok((name, plugin))
                 }
             })
             .collect::<anyhow::Result<HashMap<_, _>>>()?;
