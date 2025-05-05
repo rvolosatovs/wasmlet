@@ -1,28 +1,22 @@
 pub mod bindings;
+pub mod plugin;
 pub mod resource_types;
 pub mod wasi;
 mod workload;
 
-use core::ffi::{c_char, c_void, CStr};
 use core::fmt::Debug;
 use core::mem;
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
-use core::ptr::null;
-use core::ptr::NonNull;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
 
 use std::collections::{BTreeMap, HashMap};
-use std::ffi::CString;
-use std::path::Path;
 use std::sync::Arc;
 use std::thread::{self, ScopedJoinHandle};
 
 use anyhow::{anyhow, bail, ensure, Context as _};
-use async_ffi::FfiFuture;
 use bytes::Bytes;
-use libloading::{library_filename, Library, Symbol};
 use tokio::sync::{mpsc, oneshot, watch, Semaphore, SemaphorePermit};
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -35,11 +29,12 @@ use wasmtime::component::{
     types, Component, ComponentExportIndex, Instance, InstancePre, Linker, LinkerInstance,
     ResourceAny, ResourceTable, ResourceType, Val,
 };
-use wasmtime::{AsContextMut, Store, StoreContextMut, UpdateDeadline};
+use wasmtime::{AsContextMut, Store, UpdateDeadline};
 
 use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
 
 use self::bindings::exports::wasi::cli::{Command, CommandPre};
+use self::plugin::{AddToLinkerCtx, Plugin};
 use self::wasi::cli::I32Exit;
 pub use self::workload::Ctx;
 use self::workload::{handle_dynamic, handle_http};
@@ -137,196 +132,6 @@ struct Service<'scope> {
     thread: ScopedJoinHandle<'scope, ()>,
     permit: SemaphorePermit<'scope>,
     frozen: AtomicBool,
-}
-
-type PluginCallFn = unsafe fn(
-    workload: *const c_char,
-    instance: *const c_char,
-    name: *const c_char,
-    ty: *const types::ComponentFunc,
-    params: *const Val,
-    results: *mut Val,
-) -> bool;
-
-// Align to 16 for future-proofness.
-// Better safe than sorry!
-#[repr(C, align(16))]
-struct PluginConfig {
-    pub version: u64,
-    // TODO: Figure out config
-    pub config: *const c_void,
-    pub func_new: FuncNewFn,
-    pub func_new_async: FuncNewAsyncFn,
-    pub write_string: extern "C" fn(val: *mut Val, data: *const c_char) -> bool,
-}
-
-type InitPluginFn = unsafe extern "C" fn(conf: PluginConfig) -> bool;
-
-enum AddToLinkerCtx<'a> {
-    Workload { name: &'a str },
-    Service { name: &'a str },
-}
-
-//let name_c = CString::new(name).context("failed to construct C string")?;
-
-type AddToLinkerFn = unsafe extern "C" fn(
-    cx: *const AddToLinkerCtx<'_>,
-    engine: *const wasmtime::Engine,
-    linker: *mut LinkerInstance<Ctx>,
-    instance: *const c_char,
-    ty: *const types::ComponentInstance,
-) -> bool;
-
-type FuncNewFn = extern "C" fn(
-    linker: *mut LinkerInstance<Ctx>,
-    name: *const c_char,
-    f: unsafe extern "C" fn(
-        store: *mut StoreContextMut<'_, Ctx>,
-        param_ptr: *const Val,
-        param_len: usize,
-        result_ptr: *mut Val,
-        result_len: usize,
-    ) -> bool,
-    blocking: bool,
-) -> bool;
-
-extern "C" fn func_new(
-    linker: *mut LinkerInstance<Ctx>,
-    name: *const c_char,
-    f: unsafe extern "C" fn(
-        store: *mut StoreContextMut<'_, Ctx>,
-        param_ptr: *const Val,
-        param_len: usize,
-        result_ptr: *mut Val,
-        result_len: usize,
-    ) -> bool,
-    blocking: bool,
-) -> bool {
-    let Some(mut linker) = NonNull::new(linker) else {
-        return false;
-    };
-    if name.is_null() {
-        return false;
-    }
-    let name = unsafe { CStr::from_ptr(name) };
-    let Ok(name) = name.to_str() else {
-        return false;
-    };
-    let linker = unsafe { linker.as_mut() };
-    if !blocking {
-        linker
-            .func_new(name, move |mut store, params, results| {
-                // TODO: lower params
-                if !unsafe {
-                    f(
-                        &mut store,
-                        params.as_ptr(),
-                        params.len(),
-                        results.as_mut_ptr(),
-                        results.len(),
-                    )
-                } {
-                    bail!("failed to call plugin")
-                }
-                // TODO: lift results
-                Ok(())
-            })
-            .is_ok()
-    } else {
-        linker
-            .func_new_async(name, move |store, params, results| {
-                let f = f;
-                Box::new(async move {
-                    eprintln!("hello {f:?}");
-                    Ok(())
-                })
-            })
-            .is_ok()
-    }
-}
-
-type FuncNewAsyncFn = extern "C" fn(
-    linker: *mut LinkerInstance<Ctx>,
-    name: *const c_char,
-    f: unsafe extern "C" fn(
-        store: *mut StoreContextMut<'_, Ctx>,
-        param_ptr: *const Val,
-        param_len: usize,
-        result_ptr: *mut Val,
-        result_len: usize,
-    ) -> FfiFuture<bool>,
-) -> bool;
-
-extern "C" fn func_new_async(
-    linker: *mut LinkerInstance<Ctx>,
-    name: *const c_char,
-    f: unsafe extern "C" fn(
-        store: *mut StoreContextMut<'_, Ctx>,
-        param_ptr: *const Val,
-        param_len: usize,
-        result_ptr: *mut Val,
-        result_len: usize,
-    ) -> FfiFuture<bool>,
-) -> bool {
-    todo!("func_new_async");
-    false
-}
-
-extern "C" fn write_string(val: *mut Val, data: *const c_char) -> bool {
-    let Some(val) = NonNull::new(val) else {
-        return false;
-    };
-    if data.is_null() {
-        return false;
-    }
-    let data = unsafe { CStr::from_ptr(data) };
-    let Ok(data) = data.to_str() else {
-        return false;
-    };
-    let data = Val::String(data.into());
-    unsafe { val.write(data) };
-    true
-}
-
-struct Plugin {
-    add_to_linker: AddToLinkerFn,
-    _lib: Library,
-}
-
-impl Plugin {
-    pub fn load(src: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let src = src.as_ref();
-        let lib =
-            if src.has_root() || src.extension().is_some() || src.parent() != Some(Path::new("")) {
-                unsafe { Library::new(src) }
-            } else {
-                unsafe { Library::new(library_filename(src)) }
-            }
-            .context("failed to load dynamic library")?;
-
-        let init_plugin = unsafe { lib.get::<InitPluginFn>(b"wex_plugin_init") }
-            .context("failed to lookup `wex_plugin_init`")?;
-        if !unsafe {
-            init_plugin(PluginConfig {
-                version: 0,
-                // TODO: Set config
-                config: null(),
-                func_new,
-                func_new_async,
-                write_string,
-            })
-        } {
-            bail!("failed to initialize plugin");
-        }
-
-        let add_to_linker = unsafe { lib.get::<AddToLinkerFn>(b"wex_plugin_add_to_linker") }
-            .context("failed to lookup `wex_plugin_add_to_linker`")?;
-        let add_to_linker = *add_to_linker;
-        Ok(Self {
-            _lib: lib,
-            add_to_linker,
-        })
-    }
 }
 
 async fn handle_workload_import(
@@ -546,46 +351,24 @@ impl CompiledWorkload {
                     }
                 }
                 config::component::Import::Plugin { target } => {
-                    let Plugin { add_to_linker, .. } = plugins
+                    let plugin = plugins
                         .get(&target)
                         .with_context(|| format!("plugin `{target}` not found"))?;
                     let mut linker = self.linker.instance(&instance_name).with_context(|| {
                         format!("failed to instantiate `{instance_name}` in the linker")
                     })?;
-
-                    let instance_name_c =
-                        CString::new(&*instance_name).context("failed to construct C string")?;
-                    let engine = self.component.engine();
-                    if !unsafe {
-                        add_to_linker(
-                            &AddToLinkerCtx::Workload { name },
-                            engine,
-                            &mut linker,
-                            instance_name_c.as_ptr(),
-                            &ty,
-                        )
-                    } {
-                        bail!("plugin `{target}` failed to link `{instance_name}` for workload `{name}`")
-                    }
+                    plugin.add_to_linker(
+                        self.component.engine(),
+                        &mut linker,
+                        &AddToLinkerCtx::Workload { name },
+                        &instance_name,
+                        &ty,
+                    )?;
                 }
             }
         }
         Ok(unresolved)
     }
-}
-
-// TODO
-#[allow(unused)]
-async fn handle_plugin(
-    rt: &tokio::runtime::Handle,
-    call: &Symbol<'_, PluginCallFn>,
-    mut invocations: mpsc::Receiver<PluginInvocation>,
-) {
-    let Some(PluginInvocation { span, payload }) = invocations.recv().await else {
-        debug!("invocation channel closed, plugin thread exiting");
-        return;
-    };
-    let _span = span.enter();
 }
 
 struct ResolvedWorkload {
