@@ -13,7 +13,7 @@ anyhow = { workspace = true, features = ["std"] }
 async-ffi = { workspace = true }
 bitflags = { workspace = true }
 bytes = { workspace = true }
-cap-fs-ext = { workspace = true, features = ["std"]  }
+cap-fs-ext = { workspace = true, features = ["std"] }
 cap-net-ext = { workspace = true }
 cap-rand = { workspace = true, features = ["small_rng"] }
 cap-std = { workspace = true }
@@ -67,5 +67,6 @@ wasmtime = { workspace = true, features = [
     "runtime",
     "threads",
 ] }
+wasmtime-cabish = { workspace = true }
 webpki-roots = { workspace = true }
 wit-component = { workspace = true }

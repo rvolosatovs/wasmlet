@@ -1,24 +1,26 @@
+use core::ffi::{c_char, c_void, CStr};
 use core::ptr::null;
 use core::ptr::NonNull;
-use core::{
-    ffi::{c_char, c_void, CStr},
-    ptr::null_mut,
-};
 
-use std::ffi::CString;
 use std::path::Path;
+use std::{ffi::CString, sync::Arc};
 
 use anyhow::{bail, Context as _};
 use async_ffi::FfiFuture;
-use libloading::{library_filename, Library};
+use libloading::{library_filename, Library, Symbol};
 use tracing::debug;
-use wasmtime::component::{
-    types::{self, ComponentItem},
-    LinkerInstance, Val,
-};
+use wasmtime::component::{types, LinkerInstance, ResourceTable, Val};
+use wasmtime::component::{types::ComponentItem, Type};
 use wasmtime::StoreContextMut;
+use wasmtime_cabish::{lift_results, CabishView};
 
 use crate::engine::Ctx;
+
+impl CabishView for Ctx {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+}
 
 mod fns {
     use super::*;
@@ -90,6 +92,77 @@ pub struct Plugin {
     lib: Library,
 }
 
+fn dlsym<'a, T>(lib: &'a Library, symbol: &str) -> anyhow::Result<Symbol<'a, T>> {
+    unsafe { lib.get::<T>(symbol.as_bytes()) }
+        .with_context(|| format!("failed to lookup `{symbol}`"))
+}
+
+fn link_func(
+    linker: &mut LinkerInstance<Ctx>,
+    lib: &Library,
+    ty: &types::ComponentFunc,
+    instance_name: &str,
+    name: &str,
+) -> anyhow::Result<()> {
+    if ty.params().len() != 0 {
+        bail!("params not supported yet");
+    }
+    let result_tys = ty.results().collect::<Arc<[_]>>();
+    let symbol = format!("{instance_name}#{name}");
+    match &*result_tys {
+        [] => {
+            let f = dlsym::<unsafe extern "C" fn()>(lib, &symbol)?;
+            let f = *f;
+            linker.func_new(name, move |_, _, _| {
+                unsafe { f() };
+                Ok(())
+            })
+        }
+        //Bool,
+        //S8,
+        //U8,
+        //S16,
+        //U16,
+        //S32,
+        //U32,
+        //S64,
+        //U64,
+        //Float32,
+        //Float64,
+        //Char,
+        //String,
+        //List(List),
+        //Record(Record),
+        //Tuple(Tuple),
+        //Variant(Variant),
+        //Enum(Enum),
+        //Option(OptionType),
+        //Result(ResultType),
+        //Flags(Flags),
+        //Own(ResourceType),
+        //Borrow(ResourceType),
+        [Type::String] => {
+            let f = dlsym::<unsafe extern "C" fn()>(lib, &symbol)?;
+            let f = *f;
+            linker.func_new(name, move |_, _, _| {
+                unsafe { f() };
+                Ok(())
+            })
+        }
+        [..] => {
+            let f =
+                unsafe { lib.get::<unsafe extern "C" fn() -> *const c_void>(symbol.as_bytes()) }
+                    .with_context(|| format!("failed to lookup `{symbol}`"))?;
+            let f = *f;
+            linker.func_new(name, move |store, params, results| {
+                let ptr = unsafe { f() };
+                lift_results(store, &result_tys, ptr, results)
+            })
+        }
+    }
+    .with_context(|| format!("failed to define function `{name}`"))
+}
+
 impl Plugin {
     pub fn load(src: impl AsRef<Path>) -> anyhow::Result<Self> {
         let src = src.as_ref();
@@ -101,19 +174,24 @@ impl Plugin {
             }
             .context("failed to load dynamic library")?;
 
-        let init_plugin = unsafe { lib.get::<fns::InitPlugin>(b"wex_plugin_init") }
-            .context("failed to lookup `wex_plugin_init`")?;
-        if !unsafe {
-            init_plugin(PluginConfig {
-                version: 0,
-                // TODO: Set config
-                config: null(),
-                func_new,
-                func_new_async,
-                write_string,
-            })
-        } {
-            bail!("failed to initialize plugin");
+        match unsafe { lib.get::<fns::InitPlugin>(b"wex_plugin_init") } {
+            Ok(init_plugin) => {
+                if !unsafe {
+                    init_plugin(PluginConfig {
+                        version: 0,
+                        // TODO: Set config
+                        config: null(),
+                        func_new,
+                        func_new_async,
+                        write_string,
+                    })
+                } {
+                    bail!("failed to initialize plugin");
+                }
+            }
+            Err(err) => {
+                debug!(?err, "failed to lookup `wex_plugin_init`");
+            }
         }
 
         let add_to_linker =
@@ -149,30 +227,27 @@ impl Plugin {
                 ComponentItem::ComponentFunc(ty) => {
                     let symbol = format!("{instance_name}#{name}");
                     let f = unsafe {
-                        lib.get::<unsafe extern "C" fn() -> *const u8>(symbol.as_bytes())
+                        lib.get::<unsafe extern "C" fn() -> *const c_void>(symbol.as_bytes())
                     }
-                    .with_context(|| format!("failed to lookup `{symbol}` in plugin `{target}`"))?;
+                    .with_context(|| format!("failed to lookup `{symbol}`"))?;
                     let f = *f;
+                    if ty.params().len() != 0 {
+                        bail!("params not supported yet");
+                    }
+                    let result_tys = ty.results().collect::<Vec<_>>();
                     linker
-                        .func_wrap::<_, (), (FfiReturn, FfiReturn)>(name, move |store, params| {
-                            todo!()
-                            //let ptr = unsafe { f() };
-                            //Ok((ptr,))
-                            //let ptr = unsafe { f() }.cast::<(*const u8, usize)>();
-                            //let (ptr, len) = unsafe { *ptr };
-                            //let s = unsafe { slice::from_raw_parts(ptr, len) };
-                            //Ok((String::from_utf8_lossy(s).to_string(),))
+                        .func_new(name, move |store, params, results| {
+                            let ptr = unsafe { f() };
+                            lift_results(store, &result_tys, ptr, results)
                         })
                         .with_context(|| format!("failed to define function `{name}`"))?;
                 }
-                ComponentItem::Resource(ty) => {
-                    bail!("res")
-                }
-                ComponentItem::CoreFunc(ty) => {}
-                ComponentItem::Module(module) => {}
-                ComponentItem::Component(component) => {}
-                ComponentItem::ComponentInstance(component_instance) => {}
-                ComponentItem::Type(_) => {}
+                ComponentItem::Resource(ty) => bail!("resources not supported yet"),
+                ComponentItem::CoreFunc(..)
+                | ComponentItem::Module(..)
+                | ComponentItem::Component(..)
+                | ComponentItem::ComponentInstance(..)
+                | ComponentItem::Type(_) => {}
             }
         }
         Ok(())
@@ -253,10 +328,11 @@ extern "C" fn write_char(val: *mut Val, data: u32) -> bool {
     let Some(val) = NonNull::new(val) else {
         return false;
     };
-    let data = char::from_u32(data).with_context(|| format!("`{data}` is not a valid char"))?;
-    let data = Val::Char(data);
-    unsafe { val.write(data) };
-    true
+    todo!();
+    //let data = char::from_u32(data).with_context(|| format!("`{data}` is not a valid char"))?;
+    //let data = Val::Char(data);
+    //unsafe { val.write(data) };
+    //true
 }
 
 extern "C" fn write_string(val: *mut Val, data: *const c_char) -> bool {

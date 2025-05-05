@@ -15,6 +15,6 @@ struct Handler;
 
 impl Guest for Handler {
     fn hello() -> String {
-        "hello from Rust".into()
+        "hello from Rust bindgen export".into()
     }
 }

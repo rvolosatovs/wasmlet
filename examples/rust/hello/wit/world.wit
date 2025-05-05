@@ -10,7 +10,4 @@ interface test {
 
 world component {
     include wex-examples:hello/server;
-
-    export test;
-    import test;
 }

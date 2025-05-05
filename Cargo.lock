@@ -236,6 +236,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cabish"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "cap-fs-ext"
 version = "3.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2920,6 +2927,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmtime-cabish"
+version = "0.3.1"
+dependencies = [
+ "anyhow",
+ "cabish",
+ "tracing",
+ "wasmtime",
+]
+
+[[package]]
 name = "wasmtime-cache"
 version = "32.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3161,6 +3178,7 @@ dependencies = [
  "wasi-preview1-component-adapter-provider",
  "wasmparser 0.229.0",
  "wasmtime",
+ "wasmtime-cabish",
  "webpki-roots 0.26.8",
  "wit-component 0.229.0",
 ]

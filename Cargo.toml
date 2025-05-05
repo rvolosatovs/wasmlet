@@ -86,6 +86,7 @@ url = { version = "2", default-features = false }
 wasi-preview1-component-adapter-provider = { version = "32", default-features = false }
 wasmparser = { version = "0.229", default-features = false }
 wasmtime = { version = "32", default-features = false }
+wasmtime-cabish = { version = "0.3.1", path = "../cabish/crates/wasmtime", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
 wex = { path = "./crates/wex" }
 wex-cli = { path = "./." }
