@@ -1,3 +1,7 @@
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
 use std::collections::hash_map;
 use std::path::Path;
 use std::sync::Arc;
@@ -5,6 +9,7 @@ use std::sync::Arc;
 use bitflags::bitflags;
 use cap_fs_ext::{FileTypeExt as _, MetadataExt as _};
 use cap_std::ambient_authority;
+use tokio::task::{spawn_blocking, JoinHandle};
 use tracing::debug;
 use wasmtime::component::{Linker, ResourceTable};
 
@@ -14,9 +19,24 @@ use crate::engine::bindings::wasi::filesystem::types::{
     NewTimestamp, OpenFlags, PathFlags,
 };
 use crate::engine::ResourceView;
-use wasmtime_wasi::runtime::{spawn_blocking, AbortOnDropJoinHandle};
 
 mod host;
+
+pub struct AbortOnDropJoinHandle<T>(JoinHandle<T>);
+
+impl<T> Future for AbortOnDropJoinHandle<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        todo!()
+    }
+}
+
+impl<T> Drop for AbortOnDropJoinHandle<T> {
+    fn drop(&mut self) {
+        todo!()
+    }
+}
 
 pub struct Error;
 pub struct DirectoryEntryStream;
@@ -985,13 +1005,14 @@ impl File {
         }
     }
 
+    // TODO: Abort on drop
     pub(crate) fn spawn_blocking<F, R>(&self, body: F) -> AbortOnDropJoinHandle<R>
     where
         F: FnOnce(&cap_std::fs::File) -> R + Send + 'static,
         R: Send + 'static,
     {
         let f = self.file.clone();
-        spawn_blocking(move || body(&f))
+        AbortOnDropJoinHandle(spawn_blocking(move || body(&f)))
     }
 
     /// Returns `Some` when the current thread is allowed to block in filesystem
@@ -1077,7 +1098,7 @@ impl Dir {
             body(&self.dir)
         } else {
             let d = self.dir.clone();
-            spawn_blocking(move || body(&d)).await
+            spawn_blocking(move || body(&d)).await.unwrap()
         }
     }
 }

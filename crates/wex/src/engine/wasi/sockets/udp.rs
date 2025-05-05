@@ -10,7 +10,6 @@ use rustix::fd::AsFd;
 use rustix::io::Errno;
 use rustix::net::{connect, connect_unspec};
 use tracing::debug;
-use wasmtime_wasi::runtime::with_ambient_tokio_runtime;
 
 use crate::engine::bindings::wasi::sockets::network::{
     ErrorCode, IpAddressFamily, IpSocketAddress,
@@ -77,12 +76,9 @@ impl UdpSocket {
             }
         };
 
-        let socket = with_ambient_tokio_runtime(|| {
-            tokio::net::UdpSocket::try_from(unsafe {
-                std::net::UdpSocket::from_raw_socketlike(fd.into_raw_socketlike())
-            })
+        let socket = tokio::net::UdpSocket::try_from(unsafe {
+            std::net::UdpSocket::from_raw_socketlike(fd.into_raw_socketlike())
         })?;
-
         Ok(Self {
             socket: Arc::new(socket),
             udp_state: UdpState::Default,

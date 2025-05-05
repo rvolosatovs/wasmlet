@@ -34,7 +34,7 @@ clap = { workspace = true, features = [
 ] }
 humantime = { workspace = true }
 quanta = { workspace = true }
-tokio = { workspace = true, features = ["signal"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = [
     "ansi",
@@ -86,7 +86,6 @@ url = { version = "2", default-features = false }
 wasi-preview1-component-adapter-provider = { version = "32", default-features = false }
 wasmparser = { version = "0.229", default-features = false }
 wasmtime = { version = "32", default-features = false }
-wasmtime-wasi = { version = "32", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
 wex = { path = "./crates/wex" }
 wex-cli = { path = "./." }

@@ -13,9 +13,9 @@ anyhow = { workspace = true, features = ["std"] }
 async-ffi = { workspace = true }
 bitflags = { workspace = true }
 bytes = { workspace = true }
-cap-fs-ext = { workspace = true }
+cap-fs-ext = { workspace = true, features = ["std"]  }
 cap-net-ext = { workspace = true }
-cap-rand = { workspace = true }
+cap-rand = { workspace = true, features = ["small_rng"] }
 cap-std = { workspace = true }
 cap-time-ext = { workspace = true }
 fs-set-times = { workspace = true }
@@ -43,7 +43,7 @@ semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 system-interface = { workspace = true, features = ["cap_std_impls"] }
-tokio = { workspace = true, features = ["fs", "macros"] }
+tokio = { workspace = true, features = ["fs", "macros", "io-std"] }
 tokio-rustls = { workspace = true }
 tokio-stream = { workspace = true }
 toml = { workspace = true, features = ["display", "parse", "indexmap"] }
@@ -55,6 +55,7 @@ wasmtime = { workspace = true, features = [
     "addr2line",
     "async",
     "cache",
+    "component-model",
     "coredump",
     "cranelift",
     "demangle",
@@ -66,6 +67,5 @@ wasmtime = { workspace = true, features = [
     "runtime",
     "threads",
 ] }
-wasmtime-wasi = { workspace = true }
 webpki-roots = { workspace = true }
 wit-component = { workspace = true }

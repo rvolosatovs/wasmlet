@@ -3067,49 +3067,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmtime-wasi"
-version = "32.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61fb8c8dc30eaf98ad100704645d986f53b8ae56b9e17225702da090e6c10236"
-dependencies = [
- "anyhow",
- "async-trait",
- "bitflags 2.9.0",
- "bytes",
- "cap-fs-ext",
- "cap-net-ext",
- "cap-rand",
- "cap-std",
- "cap-time-ext",
- "fs-set-times",
- "futures",
- "io-extras",
- "io-lifetimes",
- "rustix 1.0.5",
- "system-interface",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "url",
- "wasmtime",
- "wasmtime-wasi-io",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "wasmtime-wasi-io"
-version = "32.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19174c1e15d545f009f53b09a994224c065d80ff2080fcbc4769fe6bbf6419fb"
-dependencies = [
- "anyhow",
- "async-trait",
- "bytes",
- "futures",
- "wasmtime",
-]
-
-[[package]]
 name = "wasmtime-winch"
 version = "32.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3204,7 +3161,6 @@ dependencies = [
  "wasi-preview1-component-adapter-provider",
  "wasmparser 0.229.0",
  "wasmtime",
- "wasmtime-wasi",
  "webpki-roots 0.26.8",
  "wit-component 0.229.0",
 ]

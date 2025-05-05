@@ -15,7 +15,6 @@ use io_lifetimes::AsSocketlike as _;
 use rustix::io::Errno;
 use rustix::net::sockopt;
 use tokio::sync::{Mutex, RwLock};
-use wasmtime_wasi::runtime::with_ambient_tokio_runtime;
 
 use crate::engine::bindings::wasi::clocks::monotonic_clock::Duration;
 use crate::engine::bindings::wasi::sockets::network::{
@@ -391,21 +390,19 @@ pub struct TcpSocket {
 impl TcpSocket {
     /// Create a new socket in the given family.
     pub fn new(family: AddressFamily) -> std::io::Result<Self> {
-        with_ambient_tokio_runtime(|| {
-            let (socket, family) = match family {
-                AddressFamily::Ipv4 => {
-                    let socket = tokio::net::TcpSocket::new_v4()?;
-                    (socket, SocketAddressFamily::Ipv4)
-                }
-                AddressFamily::Ipv6 => {
-                    let socket = tokio::net::TcpSocket::new_v6()?;
-                    sockopt::set_ipv6_v6only(&socket, true)?;
-                    (socket, SocketAddressFamily::Ipv6)
-                }
-            };
+        let (socket, family) = match family {
+            AddressFamily::Ipv4 => {
+                let socket = tokio::net::TcpSocket::new_v4()?;
+                (socket, SocketAddressFamily::Ipv4)
+            }
+            AddressFamily::Ipv6 => {
+                let socket = tokio::net::TcpSocket::new_v6()?;
+                sockopt::set_ipv6_v6only(&socket, true)?;
+                (socket, SocketAddressFamily::Ipv6)
+            }
+        };
 
-            Ok(Self::from_state(TcpState::Default(socket), family))
-        })
+        Ok(Self::from_state(TcpState::Default(socket), family))
     }
 
     /// Create a `TcpSocket` from an existing socket.
