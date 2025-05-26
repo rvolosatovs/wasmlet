@@ -1,6 +1,9 @@
-use core::{future::Future, pin::Pin, sync::atomic::Ordering, task::Context};
-use core::{marker::PhantomData, task::Poll};
-use core::{net::SocketAddr, task::ready};
+use core::future::Future;
+use core::marker::PhantomData;
+use core::net::SocketAddr;
+use core::pin::Pin;
+use core::sync::atomic::Ordering;
+use core::task::{ready, Context, Poll};
 
 use std::path::Path;
 use std::sync::Arc;

@@ -100,24 +100,6 @@ impl WasiFilesystemCtx {
     /// # Errors
     ///
     /// This method will return an error if `host_path` cannot be opened.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use wasmtime_wasi::{p2::WasiCtxBuilder, DirPerms, FilePerms};
-    ///
-    /// # fn main() {}
-    /// # fn foo() -> wasmtime::Result<()> {
-    /// let mut wasi = WasiCtxBuilder::new();
-    ///
-    /// // Make `./host-directory` available in the guest as `.`
-    /// wasi.preopened_dir("./host-directory", ".", DirPerms::all(), FilePerms::all());
-    ///
-    /// // Make `./readonly` available in the guest as `./ro`
-    /// wasi.preopened_dir("./readonly", "./ro", DirPerms::READ, FilePerms::READ);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn preopened_dir(
         &mut self,
         host_path: impl AsRef<Path>,

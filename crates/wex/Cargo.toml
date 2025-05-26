@@ -9,6 +9,12 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# TODO: move to workspace
+cranelift = "0.120.0"
+cranelift-module = "0.120.0"
+cranelift-jit = "0.120.0"
+cranelift-native = "0.120.0"
+
 anyhow = { workspace = true, features = ["std"] }
 async-ffi = { workspace = true }
 bitflags = { workspace = true }

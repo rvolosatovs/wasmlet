@@ -1,15 +1,15 @@
 use core::ffi::{c_char, c_void, CStr};
-use core::ptr::null;
-use core::ptr::NonNull;
+use core::ptr::{null, slice_from_raw_parts, NonNull};
 
+use std::ffi::CString;
 use std::path::Path;
-use std::{ffi::CString, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::{bail, Context as _};
 use async_ffi::FfiFuture;
 use libloading::{library_filename, Library, Symbol};
 use tracing::debug;
-use wasmtime::component::{types, LinkerInstance, ResourceTable, Val};
+use wasmtime::component::{types, Lift, LinkerInstance, Lower, ResourceTable, Val};
 use wasmtime::component::{types::ComponentItem, Type};
 use wasmtime::StoreContextMut;
 use wasmtime_cabish::{lift_results, CabishView};
@@ -97,6 +97,34 @@ fn dlsym<'a, T>(lib: &'a Library, symbol: &str) -> anyhow::Result<Symbol<'a, T>>
         .with_context(|| format!("failed to lookup `{symbol}`"))
 }
 
+fn link_0_1<'a, T: Lower + 'static>(
+    linker: &mut LinkerInstance<Ctx>,
+    lib: &'a Library,
+    symbol: &str,
+    name: &str,
+) -> anyhow::Result<()> {
+    let f = dlsym::<unsafe extern "C" fn() -> *const T>(lib, &symbol)?;
+    let f = *f;
+    linker.func_wrap(name, move |_, ()| {
+        let ptr = unsafe { f() };
+        Ok((unsafe { ptr.read() },))
+    })
+}
+
+fn link_1_0<'a, T: Lift + 'static>(
+    linker: &mut LinkerInstance<Ctx>,
+    lib: &'a Library,
+    symbol: &str,
+    name: &str,
+) -> anyhow::Result<()> {
+    let f = dlsym::<unsafe extern "C" fn(T)>(lib, &symbol)?;
+    let f = *f;
+    linker.func_wrap(name, move |_, (v,)| {
+        unsafe { f(v) };
+        Ok(())
+    })
+}
+
 fn link_func(
     linker: &mut LinkerInstance<Ctx>,
     lib: &Library,
@@ -104,60 +132,107 @@ fn link_func(
     instance_name: &str,
     name: &str,
 ) -> anyhow::Result<()> {
-    if ty.params().len() != 0 {
-        bail!("params not supported yet");
-    }
+    let param_tys = ty.params().map(|(_, ty)| ty).collect::<Arc<[_]>>();
     let result_tys = ty.results().collect::<Arc<[_]>>();
     let symbol = format!("{instance_name}#{name}");
-    match &*result_tys {
-        [] => {
+    match (&*param_tys, &*result_tys) {
+        ([], []) => {
             let f = dlsym::<unsafe extern "C" fn()>(lib, &symbol)?;
             let f = *f;
-            linker.func_new(name, move |_, _, _| {
+            linker.func_wrap(name, move |_, ()| {
                 unsafe { f() };
                 Ok(())
             })
         }
-        //Bool,
-        //S8,
-        //U8,
-        //S16,
-        //U16,
-        //S32,
-        //U32,
-        //S64,
-        //U64,
-        //Float32,
-        //Float64,
-        //Char,
-        //String,
-        //List(List),
-        //Record(Record),
-        //Tuple(Tuple),
-        //Variant(Variant),
-        //Enum(Enum),
-        //Option(OptionType),
-        //Result(ResultType),
-        //Flags(Flags),
-        //Own(ResourceType),
-        //Borrow(ResourceType),
-        [Type::String] => {
-            let f = dlsym::<unsafe extern "C" fn()>(lib, &symbol)?;
+        ([], [Type::Bool]) => {
+            let f = dlsym::<unsafe extern "C" fn() -> *const u8>(lib, &symbol)?;
             let f = *f;
-            linker.func_new(name, move |_, _, _| {
-                unsafe { f() };
-                Ok(())
+            linker.func_wrap(name, move |_, ()| {
+                let ptr = unsafe { f() };
+                let data = unsafe { ptr.read() };
+                Ok((data != 0,))
             })
         }
-        [..] => {
-            let f =
-                unsafe { lib.get::<unsafe extern "C" fn() -> *const c_void>(symbol.as_bytes()) }
-                    .with_context(|| format!("failed to lookup `{symbol}`"))?;
+        ([], [Type::S8]) => link_0_1::<i8>(linker, lib, &symbol, name),
+        ([], [Type::U8]) => link_0_1::<u8>(linker, lib, &symbol, name),
+        ([], [Type::S16]) => link_0_1::<i16>(linker, lib, &symbol, name),
+        ([], [Type::U16]) => link_0_1::<u16>(linker, lib, &symbol, name),
+        ([], [Type::S32]) => link_0_1::<i32>(linker, lib, &symbol, name),
+        ([], [Type::U32]) => link_0_1::<u32>(linker, lib, &symbol, name),
+        ([], [Type::S64]) => link_0_1::<i64>(linker, lib, &symbol, name),
+        ([], [Type::U64]) => link_0_1::<u64>(linker, lib, &symbol, name),
+        ([], [Type::Float32]) => link_0_1::<f32>(linker, lib, &symbol, name),
+        ([], [Type::Float64]) => link_0_1::<f64>(linker, lib, &symbol, name),
+        ([], [Type::Char]) => {
+            let f = dlsym::<unsafe extern "C" fn() -> *const u32>(lib, &symbol)?;
             let f = *f;
-            linker.func_new(name, move |store, params, results| {
+            linker.func_wrap(name, move |_, ()| {
+                let ptr = unsafe { f() };
+                let data = unsafe { ptr.read() };
+                let data = char::from_u32(data)
+                    .with_context(|| format!("`{data}` is not a valid char"))?;
+                Ok((data,))
+            })
+        }
+        ([], [Type::String]) => {
+            let f = dlsym::<unsafe extern "C" fn() -> *const (*mut u8, usize)>(lib, &symbol)?;
+            let f = *f;
+            linker.func_wrap(name, move |_, ()| {
+                let ptr = unsafe { f() };
+                let (data, len) = unsafe { ptr.read() };
+                if len > 0 {
+                    let data = slice_from_raw_parts(data, len);
+                    let data = String::from_utf8_lossy(unsafe { &*data });
+                    Ok((data.into(),))
+                } else {
+                    Ok((String::default(),))
+                }
+            })
+        }
+        // TODO: optimize lists of integers/bytes
+        // TODO: optimize resources
+        ([], [..]) => {
+            let f = dlsym::<unsafe extern "C" fn() -> *const c_void>(lib, &symbol)?;
+            let f = *f;
+            linker.func_new(name, move |store, _, results| {
                 let ptr = unsafe { f() };
                 lift_results(store, &result_tys, ptr, results)
             })
+        }
+        ([Type::Bool], []) => {
+            let f = dlsym::<unsafe extern "C" fn(u8)>(lib, &symbol)?;
+            let f = *f;
+            linker.func_wrap(name, move |_, (v,)| {
+                unsafe { f(if v { 1 } else { 0 }) };
+                Ok(())
+            })
+        }
+        ([Type::S8], []) => link_1_0::<i8>(linker, lib, &symbol, name),
+        ([Type::U8], []) => link_1_0::<u8>(linker, lib, &symbol, name),
+        ([Type::S16], []) => link_1_0::<i16>(linker, lib, &symbol, name),
+        ([Type::U16], []) => link_1_0::<u16>(linker, lib, &symbol, name),
+        ([Type::S32], []) => link_1_0::<i32>(linker, lib, &symbol, name),
+        ([Type::U32], []) => link_1_0::<u32>(linker, lib, &symbol, name),
+        ([Type::S64], []) => link_1_0::<i64>(linker, lib, &symbol, name),
+        ([Type::U64], []) => link_1_0::<u64>(linker, lib, &symbol, name),
+        ([Type::Float32], []) => link_1_0::<f32>(linker, lib, &symbol, name),
+        ([Type::Float64], []) => link_1_0::<f64>(linker, lib, &symbol, name),
+        ([Type::Char], []) => link_1_0::<char>(linker, lib, &symbol, name),
+        ([Type::String], []) => {
+            let f = dlsym::<unsafe extern "C" fn(*const u8, usize)>(lib, &symbol)?;
+            let f = *f;
+            linker.func_wrap(name, move |_, (s,): (String,)| {
+                unsafe { f(s.as_ptr(), s.len()) };
+                Ok(())
+            })
+        }
+        // TODO: optimize lists of integers/bytes
+        // TODO: optimize resources
+        ([..], []) => {
+            bail!("TODO")
+        }
+        ([..], [..]) => {
+            bail!("TODO")
         }
     }
     .with_context(|| format!("failed to define function `{name}`"))

@@ -22,7 +22,7 @@
   ];
 
   inputs.nixify.inputs.nixlib.follows = "nixlib";
-  inputs.nixify.url = "github:rvolosatovs/nixify";
+  inputs.nixify.url = "github:rvolosatovs/nixify/feat/25.05";
   inputs.nixlib.url = "github:nix-community/nixpkgs.lib";
   inputs.nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.wit-deps.inputs.nixify.follows = "nixify";
