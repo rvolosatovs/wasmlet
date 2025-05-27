@@ -1,0 +1,34 @@
+package wasmx-examples:db;
+
+interface handler {
+    use wasi:io/poll@0.2.5.{pollable};
+
+    resource get-future {
+        subscribe: func() -> pollable;
+        
+        await: func() -> result<string>;
+    }
+
+    resource set-future {
+        subscribe: func() -> pollable;
+        
+        await: func() -> result<option<string>>;
+    }
+
+    resource database {
+        subscribe: func() -> pollable;
+
+        get: func(k: string) -> get-future;
+        set: func(k: string, v: string) -> set-future;
+    }
+
+    connect: func() -> result<database>;
+}
+
+world client {
+    import handler;
+}
+
+world server {
+    export handler;
+}

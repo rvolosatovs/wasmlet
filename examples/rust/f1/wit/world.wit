@@ -1,0 +1,5 @@
+package wasmx-examples:rust-f1;
+
+world component {
+    include wasmx-examples:hello/client;
+}

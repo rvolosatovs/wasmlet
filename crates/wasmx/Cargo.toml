@@ -1,0 +1,85 @@
+[package]
+name = "wasmx"
+version = "0.0.0"
+
+authors.workspace = true
+categories.workspace = true
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["kube"]
+kube = ["schemars", "dep:kube", "dep:k8s-openapi"]
+
+[dependencies]
+# TODO: move to workspace
+cranelift = "0.120.0"
+cranelift-module = "0.120.0"
+cranelift-jit = "0.120.0"
+cranelift-native = "0.120.0"
+schemars = { version = "0.8.6", optional = true }
+
+anyhow = { workspace = true, features = ["std"] }
+bitflags = { workspace = true }
+bytes = { workspace = true }
+cap-fs-ext = { workspace = true, features = ["std"] }
+cap-net-ext = { workspace = true }
+cap-rand = { workspace = true, features = ["small_rng"] }
+cap-std = { workspace = true }
+cap-time-ext = { workspace = true }
+fs-set-times = { workspace = true }
+futures = { workspace = true }
+http = { workspace = true }
+http-body = { workspace = true }
+http-body-util = { workspace = true }
+hyper = { workspace = true, features = ["client"] }
+hyper-util = { workspace = true, features = [
+    "http1",
+    "http2",
+    "server",
+    "server-graceful",
+    "tokio",
+] }
+io-lifetimes = { workspace = true }
+libc = { workspace = true }
+libloading = { workspace = true }
+pin-project-lite = { workspace = true }
+quanta = { workspace = true }
+kube = { workspace = true, features = ["derive"], optional = true }
+k8s-openapi = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["rustls-tls"] }
+rustix = { workspace = true }
+rustls = { workspace = true }
+semver = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+system-interface = { workspace = true, features = ["cap_std_impls"] }
+tokio = { workspace = true, features = ["fs", "macros", "io-std"] }
+tokio-rustls = { workspace = true }
+tokio-stream = { workspace = true }
+toml = { workspace = true, features = ["display", "parse", "indexmap"] }
+tracing = { workspace = true, features = ["attributes"] }
+url = { workspace = true }
+wasi-preview1-component-adapter-provider = { workspace = true }
+wasmparser = { workspace = true }
+wasmtime = { workspace = true, features = [
+    "addr2line",
+    "async",
+    "cache",
+    "component-model",
+    "coredump",
+    "cranelift",
+    "demangle",
+    "gc",
+    "gc-drc",
+    "gc-null",
+    "parallel-compilation",
+    "pooling-allocator",
+    "runtime",
+    "threads",
+] }
+wasmtime-cabish = { workspace = true }
+webpki-roots = { workspace = true }
+wit-component = { workspace = true }

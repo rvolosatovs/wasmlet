@@ -1,0 +1,75 @@
+# TODO: Version
+#version = "0.1.0-draft"
+
+[plugins.example]
+src = "example_hello"
+#src = "../wasmx.go/couchbase/couchbase"
+
+#[services.sockets]
+#src = "./target/wasm32-wasip2/release/example-sockets.wasm"
+
+[workloads.spinloop]
+src = "./target/wasm32-wasip2/release/example_spinloop.wasm"
+pool = 1
+
+[workloads.spinloop.limits]
+execution-time-ms = 100
+instances = 1
+
+[workloads.f1]
+src = "./target/wasm32-wasip2/release/example_f1.wasm"
+
+[workloads.f1.imports."wasmx-examples:hello/handler"]
+type = "workload"
+target = "f2"
+
+[workloads.f2]
+src = "./target/wasm32-wasip2/release/example_f2.wasm"
+
+[workloads.f2.imports."wasmx-examples:redis/database"]
+type = "workload"
+target = "redis"
+
+[workloads.f2.imports."wasmx-examples:redis/resp3"]
+type = "workload"
+target = "redis"
+
+[workloads.f2.imports."wasmx-examples:redis/pool"]
+type = "workload"
+target = "redis"
+
+[workloads.f1-plug]
+src = "./target/wasm32-wasip2/release/example_f1.wasm"
+
+[workloads.f1-plug.imports."wasmx-examples:hello/handler"]
+type = "plugin"
+target = "example"
+
+[workloads.redis]
+src = "./target/wasm32-wasip2/release/example_redis.wasm"
+pool = 1
+
+[workloads.redis.limits]
+instances = 1
+
+[workloads.redis-http]
+src = "./target/wasm32-wasip2/release/example_redis_http.wasm"
+
+[workloads.redis-http.imports."wasmx-examples:redis/database"]
+type = "workload"
+target = "redis"
+
+[workloads.redis-http.imports."wasmx-examples:redis/resp3"]
+type = "workload"
+target = "redis"
+
+[workloads.redis-http.imports."wasmx-examples:redis/pool"]
+type = "workload"
+target = "redis"
+
+[workloads.db]
+src = "./target/wasm32-wasip2/release/example_memdb.wasm"
+pool = 1
+
+[workloads.db.limits]
+instances = 1

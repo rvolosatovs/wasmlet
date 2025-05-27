@@ -1,0 +1,8 @@
+package wasmx-examples:rust-redis-http;
+
+world component {
+    include wasmx-examples:redis/client;
+
+    import wasmx-examples:redis/resp3;
+    import wasmx-examples:redis/pool;
+}

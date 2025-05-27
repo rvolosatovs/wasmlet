@@ -1,0 +1,5 @@
+package wasmx-examples:rust-hello;
+
+world component {
+    include wasmx-examples:hello/server;
+}

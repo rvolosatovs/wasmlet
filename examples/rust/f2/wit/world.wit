@@ -1,0 +1,9 @@
+package wasmx-examples:rust-f2;
+
+world component {
+    include wasmx-examples:hello/server;
+    include wasmx-examples:redis/client;
+
+    import wasmx-examples:redis/resp3;
+    import wasmx-examples:redis/pool;
+}

@@ -1,0 +1,6 @@
+package wasmx:engine;
+
+world imports {
+    include wasi:cli/imports@0.2.5;
+    include wasi:http/imports@0.2.5;
+}

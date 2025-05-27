@@ -1,0 +1,4 @@
+[hello]
+path = "../../../wit/hello"
+sha256 = "59ab36d5cf2412c867bb4e7ce3b4a8264b98358003c043cd5c71d9a3b47ebe05"
+sha512 = "947590986436a92ac77d7f538fbda00a0f4f37f8adbf612bca79b367f2967f3e5791d2aae6b9c809aea2225d7cba388ab0d59dd7038cb4da1fdd9eabe5b5a50b"
