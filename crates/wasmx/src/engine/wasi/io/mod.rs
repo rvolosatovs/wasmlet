@@ -50,6 +50,7 @@ pub enum Error {
     WriteBudgetExceeded,
     ShortWrite(usize),
     Stdio(std::io::Error),
+    Deadlock,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -464,14 +465,15 @@ impl OutputStream {
                     Err(err) => Ok(Err(err)),
                 }
             }
-            Self::HttpPending(rx) => {
-                let Ok(body) = rx.await else {
-                    return Ok(Err(None));
-                };
-                let res = body.blocking_write_and_flush(contents).await;
-                *self = Self::HttpWriting(body);
-                res
-            }
+            Self::HttpPending(rx) => match rx.try_recv() {
+                Ok(body) => {
+                    let res = body.blocking_write_and_flush(contents).await;
+                    *self = Self::HttpWriting(body);
+                    res
+                }
+                Err(oneshot::error::TryRecvError::Empty) => Ok(Err(Some(Error::Deadlock))),
+                Err(oneshot::error::TryRecvError::Closed) => Ok(Err(None)),
+            },
             Self::HttpWriting(body) => body.blocking_write_and_flush(contents).await,
             Self::Tracing(span) => {
                 span.in_scope(|| info!(output = ?String::from_utf8_lossy(&contents)));

@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use tracing::instrument;
 use wasmtime::component::{Resource, ResourceTable};
 
 use crate::engine::bindings::wasi::io::poll::Pollable;
@@ -129,6 +130,7 @@ impl HostInputStream for Ctx {
 }
 
 impl HostOutputStream for Ctx {
+    #[instrument(level = "trace", ret)]
     fn check_write(
         &mut self,
         stream: Resource<OutputStream>,
@@ -144,6 +146,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     fn write(
         &mut self,
         stream: Resource<OutputStream>,
@@ -160,6 +163,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     async fn blocking_write_and_flush(
         &mut self,
         stream: Resource<OutputStream>,
@@ -179,6 +183,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     fn flush(
         &mut self,
         stream: Resource<OutputStream>,
@@ -194,6 +199,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     async fn blocking_flush(
         &mut self,
         stream: Resource<OutputStream>,
@@ -212,6 +218,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     fn subscribe(
         &mut self,
         stream: Resource<OutputStream>,
@@ -221,6 +228,7 @@ impl HostOutputStream for Ctx {
         push_pollable(&mut self.table, p)
     }
 
+    #[instrument(level = "trace", ret)]
     fn write_zeroes(
         &mut self,
         stream: Resource<OutputStream>,
@@ -237,6 +245,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     async fn blocking_write_zeroes_and_flush(
         &mut self,
         stream: Resource<OutputStream>,
@@ -256,6 +265,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     fn splice(
         &mut self,
         stream: Resource<OutputStream>,
@@ -275,6 +285,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     async fn blocking_splice(
         &mut self,
         stream: Resource<OutputStream>,
@@ -297,6 +308,7 @@ impl HostOutputStream for Ctx {
         }
     }
 
+    #[instrument(level = "trace", ret)]
     fn drop(&mut self, stream: Resource<OutputStream>) -> wasmtime::Result<()> {
         self.table
             .delete(stream)

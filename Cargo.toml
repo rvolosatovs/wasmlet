@@ -1,6 +1,6 @@
 [package]
 name = "wasmx-cli"
-version = "0.0.0"
+version = "0.0.1"
 
 authors.workspace = true
 categories.workspace = true
@@ -130,7 +130,7 @@ wasmparser = { version = "0.229", default-features = false }
 wasmtime = { version = "32", default-features = false }
 wasmtime-cabish = { version = "0.3.1", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
-wasmx = { version = "0.0.0", path = "./crates/wasmx" }
+wasmx = { version = "0.0.1", path = "./crates/wasmx" }
 wasmx-cli = { path = "./." }
 wit-bindgen = { version = "0.41", default-features = false }
 wit-component = { version = "0.229", default-features = false }
