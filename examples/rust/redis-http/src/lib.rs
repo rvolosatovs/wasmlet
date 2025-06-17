@@ -8,26 +8,26 @@ mod bindings {
             "wasi:io/streams@0.2.5": wasi::io::streams,
             "wasi:sockets/network@0.2.5": wasi::sockets::network,
             "wasi:sockets/tcp@0.2.5": wasi::sockets::tcp,
-            "wasmx-examples:redis/commands": generate,
-            "wasmx-examples:redis/database": generate,
-            "wasmx-examples:redis/resp3": generate,
-            "wasmx-examples:redis/pool": generate,
+            "wasmlet-examples:redis/commands": generate,
+            "wasmlet-examples:redis/database": generate,
+            "wasmlet-examples:redis/resp3": generate,
+            "wasmlet-examples:redis/pool": generate,
         },
     });
 }
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Context as _};
-use bindings::wasmx_examples::redis::commands::{GetParam, SetOptions, SetParam};
+use bindings::wasmlet_examples::redis::commands::{GetParam, SetOptions, SetParam};
 use wasi::http::types::{
     ErrorCode, Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use wasi::sockets::network;
 
-use crate::bindings::wasmx_examples::redis::commands::{CommandParam, IncrParam};
-use crate::bindings::wasmx_examples::redis::database::{ActiveConnection, PendingConnection};
-use crate::bindings::wasmx_examples::redis::pool::{self, Connection};
-use crate::bindings::wasmx_examples::redis::resp3::{self, FrameValue, Value};
+use crate::bindings::wasmlet_examples::redis::commands::{CommandParam, IncrParam};
+use crate::bindings::wasmlet_examples::redis::database::{ActiveConnection, PendingConnection};
+use crate::bindings::wasmlet_examples::redis::pool::{self, Connection};
+use crate::bindings::wasmlet_examples::redis::resp3::{self, FrameValue, Value};
 
 wasi::http::proxy::export!(Handler);
 

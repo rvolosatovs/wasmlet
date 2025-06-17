@@ -8,10 +8,10 @@ wit_bindgen::generate!({
         "wasi:io/streams@0.2.5": wasi::io::streams,
         "wasi:sockets/network@0.2.5": wasi::sockets::network,
         "wasi:sockets/tcp@0.2.5": wasi::sockets::tcp,
-        "wasmx-examples:redis/commands": generate,
-        "wasmx-examples:redis/database": generate,
-        "wasmx-examples:redis/pool": generate,
-        "wasmx-examples:redis/resp3": generate,
+        "wasmlet-examples:redis/commands": generate,
+        "wasmlet-examples:redis/database": generate,
+        "wasmlet-examples:redis/pool": generate,
+        "wasmlet-examples:redis/resp3": generate,
     },
 });
 export!(Handler);

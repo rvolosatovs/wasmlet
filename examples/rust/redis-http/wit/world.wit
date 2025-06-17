@@ -1,8 +1,8 @@
-package wasmx-examples:rust-redis-http;
+package wasmlet-examples:rust-redis-http;
 
 world component {
-    include wasmx-examples:redis/client;
+    include wasmlet-examples:redis/client;
 
-    import wasmx-examples:redis/resp3;
-    import wasmx-examples:redis/pool;
+    import wasmlet-examples:redis/resp3;
+    import wasmlet-examples:redis/pool;
 }

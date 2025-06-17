@@ -40,7 +40,7 @@
     with nixlib.lib;
     with nixify.lib;
       rust.mkFlake {
-        name = "wasmx";
+        name = "wasmlet";
         src = ./.;
 
         overlays = [
@@ -155,30 +155,30 @@
               '';
             };
 
-          wasmx-aarch64-unknown-linux-gnu-fhs = mkFHS {
-            name = "wasmx-aarch64-unknown-linux-gnu-fhs";
-            src = packages.wasmx-aarch64-unknown-linux-gnu;
+          wasmlet-aarch64-unknown-linux-gnu-fhs = mkFHS {
+            name = "wasmlet-aarch64-unknown-linux-gnu-fhs";
+            src = packages.wasmlet-aarch64-unknown-linux-gnu;
             interpreter = interpreters.aarch64-unknown-linux-gnu;
           };
 
-          wasmx-riscv64gc-unknown-linux-gnu-fhs = mkFHS {
-            name = "wasmx-riscv64gc-unknown-linux-gnu-fhs";
-            src = packages.wasmx-riscv64gc-unknown-linux-gnu;
+          wasmlet-riscv64gc-unknown-linux-gnu-fhs = mkFHS {
+            name = "wasmlet-riscv64gc-unknown-linux-gnu-fhs";
+            src = packages.wasmlet-riscv64gc-unknown-linux-gnu;
             interpreter = interpreters.riscv64gc-unknown-linux-gnu;
           };
 
-          wasmx-x86_64-unknown-linux-gnu-fhs = mkFHS {
-            name = "wasmx-x86_64-unknown-linux-gnu-fhs";
-            src = packages.wasmx-x86_64-unknown-linux-gnu;
+          wasmlet-x86_64-unknown-linux-gnu-fhs = mkFHS {
+            name = "wasmlet-x86_64-unknown-linux-gnu-fhs";
+            src = packages.wasmlet-x86_64-unknown-linux-gnu;
             interpreter = interpreters.x86_64-unknown-linux-gnu;
           };
         in
           packages
           // {
             inherit
-              wasmx-aarch64-unknown-linux-gnu-fhs
-              wasmx-riscv64gc-unknown-linux-gnu-fhs
-              wasmx-x86_64-unknown-linux-gnu-fhs
+              wasmlet-aarch64-unknown-linux-gnu-fhs
+              wasmlet-riscv64gc-unknown-linux-gnu-fhs
+              wasmlet-x86_64-unknown-linux-gnu-fhs
               ;
 
             rust = hostRustToolchain;

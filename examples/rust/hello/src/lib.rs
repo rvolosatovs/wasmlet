@@ -3,13 +3,13 @@ mod bindings {
 
     wit_bindgen::generate!({
         with: {
-            "wasmx-examples:hello/handler": generate,
+            "wasmlet-examples:hello/handler": generate,
         },
     });
     export!(Handler);
 }
 
-use bindings::exports::wasmx_examples::hello::handler::Guest;
+use bindings::exports::wasmlet_examples::hello::handler::Guest;
 
 struct Handler;
 

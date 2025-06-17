@@ -1,5 +1,5 @@
-package wasmx-examples:rust-hello;
+package wasmlet-examples:rust-hello;
 
 world component {
-    include wasmx-examples:hello/server;
+    include wasmlet-examples:hello/server;
 }

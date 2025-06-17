@@ -4,13 +4,13 @@ mod bindings {
     wit_bindgen::generate!({
         with: {
             "wasi:io/poll@0.2.5": wasi::io::poll,
-            "wasmx-examples:db/handler": generate,
+            "wasmlet-examples:db/handler": generate,
         },
     });
     export!(Handler);
 }
 
-use bindings::exports::wasmx_examples::db::handler;
+use bindings::exports::wasmlet_examples::db::handler;
 
 use std::sync::OnceLock;
 

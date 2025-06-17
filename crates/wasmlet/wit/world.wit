@@ -1,4 +1,4 @@
-package wasmx:engine;
+package wasmlet:engine;
 
 world imports {
     include wasi:cli/imports@0.2.5;

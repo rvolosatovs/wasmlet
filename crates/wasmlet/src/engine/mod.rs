@@ -866,7 +866,7 @@ impl<T: Builtins> Engine<T> {
     ) -> anyhow::Result<()> {
         let pre = CommandPre::new(pre).context("failed to pre-instantiate `wasi:cli/command`")?;
 
-        let thread_name = format!("wasmx-service-{name}");
+        let thread_name = format!("wasmlet-service-{name}");
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_io()
             .enable_time()
@@ -961,7 +961,7 @@ impl<T: Builtins> Engine<T> {
             let mut linker = Linker::<T::Context>::new(&self.engine);
             T::add_to_linker(&mut linker)?;
 
-            let thread_name = format!("wasmx-workload-{name}");
+            let thread_name = format!("wasmlet-workload-{name}");
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .thread_name(&thread_name)
                 .enable_io()

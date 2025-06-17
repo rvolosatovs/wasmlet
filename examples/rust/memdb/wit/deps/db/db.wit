@@ -1,4 +1,4 @@
-package wasmx-examples:db;
+package wasmlet-examples:db;
 
 interface handler {
     use wasi:io/poll@0.2.5.{pollable};

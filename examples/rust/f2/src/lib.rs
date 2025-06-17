@@ -9,25 +9,25 @@ mod bindings {
             "wasi:io/streams@0.2.5": wasi::io::streams,
             "wasi:sockets/network@0.2.5": wasi::sockets::network,
             "wasi:sockets/tcp@0.2.5": wasi::sockets::tcp,
-            "wasmx-examples:hello/handler": generate,
-            "wasmx-examples:redis/commands": generate,
-            "wasmx-examples:redis/database": generate,
-            "wasmx-examples:redis/resp3": generate,
-            "wasmx-examples:redis/pool": generate,
+            "wasmlet-examples:hello/handler": generate,
+            "wasmlet-examples:redis/commands": generate,
+            "wasmlet-examples:redis/database": generate,
+            "wasmlet-examples:redis/resp3": generate,
+            "wasmlet-examples:redis/pool": generate,
         },
     });
     export!(Handler);
 }
 
-use bindings::wasmx_examples::redis::commands::{Command, Get, Hello, Ping};
-use bindings::wasmx_examples::redis::database::PendingConnection;
-use bindings::wasmx_examples::redis::pool;
-use bindings::wasmx_examples::redis::pool::Connection;
-use bindings::wasmx_examples::redis::resp3::{self, FrameValue, IndirectValue, Value};
+use bindings::wasmlet_examples::redis::commands::{Command, Get, Hello, Ping};
+use bindings::wasmlet_examples::redis::database::PendingConnection;
+use bindings::wasmlet_examples::redis::pool;
+use bindings::wasmlet_examples::redis::pool::Connection;
+use bindings::wasmlet_examples::redis::resp3::{self, FrameValue, IndirectValue, Value};
 
 struct Handler;
 
-impl bindings::exports::wasmx_examples::hello::handler::Guest for Handler {
+impl bindings::exports::wasmlet_examples::hello::handler::Guest for Handler {
     fn hello() -> String {
         let conn = match pool::get() {
             // TODO: Incr

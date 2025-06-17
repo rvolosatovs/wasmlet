@@ -2,8 +2,8 @@ use anyhow::bail;
 use redis_protocol::resp2;
 use redis_protocol::resp3::types::{BytesFrame, VerbatimStringFormat};
 
-use crate::bindings::exports::wasmx_examples::redis::database;
-use crate::bindings::exports::wasmx_examples::redis::resp3::{
+use crate::bindings::exports::wasmlet_examples::redis::database;
+use crate::bindings::exports::wasmlet_examples::redis::resp3::{
     FrameValue, Guest, GuestIndirectValue, IndirectValue, Value, VerbatimFormat, VerbatimString,
 };
 use crate::database::Frame;

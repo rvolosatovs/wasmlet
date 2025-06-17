@@ -1,4 +1,4 @@
-package wasmx-examples:redis;
+package wasmlet-examples:redis;
 
 interface resp2 {
     use database.{frame};

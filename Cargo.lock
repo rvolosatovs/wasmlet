@@ -3944,6 +3944,82 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmlet"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "bitflags 2.9.0",
+ "bytes",
+ "cap-fs-ext",
+ "cap-net-ext",
+ "cap-rand",
+ "cap-std",
+ "cap-time-ext",
+ "cranelift",
+ "cranelift-jit",
+ "cranelift-module",
+ "cranelift-native 0.120.0",
+ "fs-set-times",
+ "futures",
+ "http 1.3.1",
+ "http-body 1.0.1",
+ "http-body-util",
+ "hyper 1.6.0",
+ "hyper-util",
+ "io-lifetimes",
+ "libc",
+ "libloading",
+ "pin-project-lite",
+ "quanta",
+ "reqwest",
+ "rustix 1.0.5",
+ "rustls 0.23.26",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "system-interface",
+ "tokio",
+ "tokio-rustls 0.26.2",
+ "tokio-stream",
+ "toml",
+ "tracing",
+ "url",
+ "wasi-preview1-component-adapter-provider",
+ "wasmparser 0.229.0",
+ "wasmtime",
+ "wasmtime-cabish",
+ "webpki-roots 0.26.8",
+ "wit-component 0.229.0",
+]
+
+[[package]]
+name = "wasmlet-cli"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "futures",
+ "humantime",
+ "k8s-openapi",
+ "kube",
+ "kube-derive",
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-stdout",
+ "opentelemetry_sdk",
+ "quanta",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "wasmlet",
+]
+
+[[package]]
 name = "wasmparser"
 version = "0.227.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4250,82 +4326,6 @@ dependencies = [
  "heck",
  "indexmap",
  "wit-parser 0.228.0",
-]
-
-[[package]]
-name = "wasmx"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "bitflags 2.9.0",
- "bytes",
- "cap-fs-ext",
- "cap-net-ext",
- "cap-rand",
- "cap-std",
- "cap-time-ext",
- "cranelift",
- "cranelift-jit",
- "cranelift-module",
- "cranelift-native 0.120.0",
- "fs-set-times",
- "futures",
- "http 1.3.1",
- "http-body 1.0.1",
- "http-body-util",
- "hyper 1.6.0",
- "hyper-util",
- "io-lifetimes",
- "libc",
- "libloading",
- "pin-project-lite",
- "quanta",
- "reqwest",
- "rustix 1.0.5",
- "rustls 0.23.26",
- "schemars",
- "semver",
- "serde",
- "serde_json",
- "system-interface",
- "tokio",
- "tokio-rustls 0.26.2",
- "tokio-stream",
- "toml",
- "tracing",
- "url",
- "wasi-preview1-component-adapter-provider",
- "wasmparser 0.229.0",
- "wasmtime",
- "wasmtime-cabish",
- "webpki-roots 0.26.8",
- "wit-component 0.229.0",
-]
-
-[[package]]
-name = "wasmx-cli"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "clap",
- "futures",
- "humantime",
- "k8s-openapi",
- "kube",
- "kube-derive",
- "opentelemetry",
- "opentelemetry-appender-tracing",
- "opentelemetry-stdout",
- "opentelemetry_sdk",
- "quanta",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "wasmx",
 ]
 
 [[package]]

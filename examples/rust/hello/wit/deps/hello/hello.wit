@@ -1,4 +1,4 @@
-package wasmx-examples:hello;
+package wasmlet-examples:hello;
 
 interface handler {
     hello: func() -> string;

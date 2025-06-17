@@ -176,7 +176,7 @@ pub async fn read_manifest(path: impl AsRef<Path>) -> anyhow::Result<Manifest<By
             Manifest::default()
         }
         Err(err) => {
-            bail!(anyhow!(err).context("failed to read `wasmx.toml`"))
+            bail!(anyhow!(err).context("failed to read `wasmlet.toml`"))
         }
     };
     load_manifest(manifest).await
@@ -334,10 +334,10 @@ impl Host {
             let cmds = cmds.clone();
             async move {
                 let (mut parts, body) = req.into_parts();
-                let Some(name) = parts.headers.remove("X-Wasmx-Id") else {
+                let Some(name) = parts.headers.remove("X-Wasmlet-Id") else {
                     return build_http_response(
                         http::StatusCode::BAD_REQUEST,
-                        "`X-Wasmx-Id` header missing",
+                        "`X-Wasmlet-Id` header missing",
                     );
                 };
                 let name = match name.to_str() {
@@ -345,7 +345,7 @@ impl Host {
                     Err(err) => {
                         return build_http_response(
                             http::StatusCode::BAD_REQUEST,
-                            format!("`X-Wasmx-Id` header value is not valid UTF-8: {err}"),
+                            format!("`X-Wasmlet-Id` header value is not valid UTF-8: {err}"),
                         );
                     }
                 };

@@ -3,7 +3,7 @@
 
 [plugins.example]
 src = "example_hello"
-#src = "../wasmx.go/couchbase/couchbase"
+#src = "../wasmlet.go/couchbase/couchbase"
 
 #[services.sockets]
 #src = "./target/wasm32-wasip2/release/example-sockets.wasm"
@@ -19,29 +19,29 @@ instances = 1
 [workloads.f1]
 src = "./target/wasm32-wasip2/release/example_f1.wasm"
 
-[workloads.f1.imports."wasmx-examples:hello/handler"]
+[workloads.f1.imports."wasmlet-examples:hello/handler"]
 type = "workload"
 target = "f2"
 
 [workloads.f2]
 src = "./target/wasm32-wasip2/release/example_f2.wasm"
 
-[workloads.f2.imports."wasmx-examples:redis/database"]
+[workloads.f2.imports."wasmlet-examples:redis/database"]
 type = "workload"
 target = "redis"
 
-[workloads.f2.imports."wasmx-examples:redis/resp3"]
+[workloads.f2.imports."wasmlet-examples:redis/resp3"]
 type = "workload"
 target = "redis"
 
-[workloads.f2.imports."wasmx-examples:redis/pool"]
+[workloads.f2.imports."wasmlet-examples:redis/pool"]
 type = "workload"
 target = "redis"
 
 [workloads.f1-plug]
 src = "./target/wasm32-wasip2/release/example_f1.wasm"
 
-[workloads.f1-plug.imports."wasmx-examples:hello/handler"]
+[workloads.f1-plug.imports."wasmlet-examples:hello/handler"]
 type = "plugin"
 target = "example"
 
@@ -55,15 +55,15 @@ instances = 1
 [workloads.redis-http]
 src = "./target/wasm32-wasip2/release/example_redis_http.wasm"
 
-[workloads.redis-http.imports."wasmx-examples:redis/database"]
+[workloads.redis-http.imports."wasmlet-examples:redis/database"]
 type = "workload"
 target = "redis"
 
-[workloads.redis-http.imports."wasmx-examples:redis/resp3"]
+[workloads.redis-http.imports."wasmlet-examples:redis/resp3"]
 type = "workload"
 target = "redis"
 
-[workloads.redis-http.imports."wasmx-examples:redis/pool"]
+[workloads.redis-http.imports."wasmlet-examples:redis/pool"]
 type = "workload"
 target = "redis"
 

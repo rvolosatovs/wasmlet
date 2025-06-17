@@ -18,11 +18,11 @@ use wasi::sockets::network::{self, IpAddressFamily, IpSocketAddress, Ipv4SocketA
 use wasi::sockets::tcp::TcpSocket;
 use wasi::sockets::tcp_create_socket::create_tcp_socket;
 
-use crate::bindings::exports::wasmx_examples::redis::database::{
+use crate::bindings::exports::wasmlet_examples::redis::database::{
     self, ActiveConnection, FrameStreamError, Guest, GuestCommandSink, GuestFrame,
     GuestFrameStream, GuestPendingConnection,
 };
-use crate::bindings::wasmx_examples::redis::commands::{
+use crate::bindings::wasmlet_examples::redis::commands::{
     Command, Get, Hello, Incr, Ping, Publish, Set, Watch,
 };
 use crate::Handler;

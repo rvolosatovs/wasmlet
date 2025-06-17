@@ -1,5 +1,5 @@
-package wasmx-examples:rust-memdb;
+package wasmlet-examples:rust-memdb;
 
 world component {
-    include wasmx-examples:db/server;
+    include wasmlet-examples:db/server;
 }

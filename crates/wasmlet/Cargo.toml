@@ -1,5 +1,5 @@
 [package]
-name = "wasmx"
+name = "wasmlet"
 version = "0.0.1"
 
 authors.workspace = true

@@ -1,4 +1,4 @@
-//! # Wasmx's WASI HTTP Implementation
+//! # Wasmlet's WASI HTTP Implementation
 
 #![allow(unused)] // TODO: remove
 

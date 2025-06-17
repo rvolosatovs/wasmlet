@@ -26,7 +26,7 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
-use wasmx::{
+use wasmlet::{
     apply_manifest, load_and_apply_manifest, read_and_apply_manifest, Engine, Host, Manifest, Wasi,
     EPOCH_INTERVAL, EPOCH_MONOTONIC_NOW, EPOCH_SYSTEM_NOW,
 };
@@ -107,7 +107,7 @@ fn init_tracing() -> SdkLoggerProvider {
     let provider: SdkLoggerProvider = SdkLoggerProvider::builder()
         .with_resource(
             opentelemetry_sdk::Resource::builder()
-                .with_service_name("wasmx")
+                .with_service_name("wasmlet")
                 .build(),
         )
         //.with_simple_exporter(exporter)
@@ -166,9 +166,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     let otel = init_tracing();
-    debug!(pid = std::process::id(), "wasmx starting",);
+    debug!(pid = std::process::id(), "wasmlet starting",);
 
-    let engine = wasmx::wasmtime::new_engine(max_instances)?;
+    let engine = wasmlet::wasmtime::new_engine(max_instances)?;
 
     let init_at = clock.now();
     debug_assert_eq!(EPOCH_INTERVAL, Duration::from_millis(1));
@@ -184,7 +184,7 @@ fn main() -> anyhow::Result<()> {
     let epoch = {
         let engine = engine.weak();
         thread::Builder::new()
-            .name("wasmx-epoch".into())
+            .name("wasmlet-epoch".into())
             .spawn(move || loop {
                 thread::sleep(EPOCH_INTERVAL);
 
@@ -210,19 +210,19 @@ fn main() -> anyhow::Result<()> {
     let (cmds_tx, cmds_rx) = mpsc::channel(max_instances.max(1024));
 
     let engine = thread::Builder::new()
-        .name("wasmx-engine".into())
+        .name("wasmlet-engine".into())
         .spawn(move || Engine::<Wasi>::new(engine, max_instances).handle_commands(cmds_rx))
         .context("failed to spawn scheduler thread")?;
 
     let main = tokio::runtime::Builder::new_multi_thread()
-        .thread_name("wasmx-main")
+        .thread_name("wasmlet-main")
         .enable_io()
         .enable_time()
         .build()
         .context("failed to build main Tokio runtime")?;
     main.block_on(async {
-        if std::fs::exists("wasmx.toml")? {
-            read_and_apply_manifest(&cmds_tx, "wasmx.toml").await?;
+        if std::fs::exists("wasmlet.toml")? {
+            read_and_apply_manifest(&cmds_tx, "wasmlet.toml").await?;
         }
 
         let mut tasks = JoinSet::new();
@@ -336,7 +336,7 @@ fn main() -> anyhow::Result<()> {
                 loop {
                     while let Some(()) = sighup.recv().await {
                         info!("SIGHUP received, reloading manifest");
-                        if let Err(err) = read_and_apply_manifest(&cmds_tx, "wasmx.toml").await {
+                        if let Err(err) = read_and_apply_manifest(&cmds_tx, "wasmlet.toml").await {
                             error!(?err, "failed to load and apply manifest");
                         }
                         info!("reloaded manifest");

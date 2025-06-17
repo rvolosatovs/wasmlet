@@ -1,7 +1,7 @@
 mod bindings {
     wit_bindgen::generate!({ generate_all });
 }
-use bindings::wasmx_examples::hello::handler::hello;
+use bindings::wasmlet_examples::hello::handler::hello;
 
 use std::io::Write as _;
 

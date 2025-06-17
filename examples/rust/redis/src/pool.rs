@@ -3,8 +3,8 @@ use std::sync::Mutex;
 
 use wasi::sockets::network;
 
-use crate::bindings::exports::wasmx_examples::redis::database::{ActiveConnection, Guest as _};
-use crate::bindings::exports::wasmx_examples::redis::pool::{Connection, Guest};
+use crate::bindings::exports::wasmlet_examples::redis::database::{ActiveConnection, Guest as _};
+use crate::bindings::exports::wasmlet_examples::redis::pool::{Connection, Guest};
 use crate::Handler;
 
 static POOL: Mutex<VecDeque<ActiveConnection>> = Mutex::new(VecDeque::new());

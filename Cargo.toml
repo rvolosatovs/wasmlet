@@ -1,5 +1,5 @@
 [package]
-name = "wasmx-cli"
+name = "wasmlet-cli"
 version = "0.0.1"
 
 authors.workspace = true
@@ -15,9 +15,9 @@ authors = ["Roman Volosatovs <rvolosatovs@riseup.net>"]
 categories = ["wasm"]
 description = "High-performance, embeddable WebAssembly execution engine"
 edition = "2021"
-homepage = "https://github.com/rvolosatovs/wasmx"
+homepage = "https://github.com/rvolosatovs/wasmlet"
 license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://github.com/rvolosatovs/wasmx"
+repository = "https://github.com/rvolosatovs/wasmlet"
 
 [workspace]
 resolver = "2"
@@ -71,7 +71,7 @@ tracing-subscriber = { workspace = true, features = [
     "smallvec",
     "tracing-log",
 ] }
-wasmx = { workspace = true }
+wasmlet = { workspace = true }
 
 [workspace.dependencies]
 anyhow = { version = "1", default-features = false }
@@ -123,11 +123,11 @@ tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false }
 url = { version = "2", default-features = false }
 wasi-preview1-component-adapter-provider = { version = "32", default-features = false }
+wasmlet = { version = "0.0.1", path = "./crates/wasmlet" }
+wasmlet-cli = { path = "./." }
 wasmparser = { version = "0.229", default-features = false }
 wasmtime = { version = "32", default-features = false }
 wasmtime-cabish = { version = "0.3.1", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
-wasmx = { version = "0.0.1", path = "./crates/wasmx" }
-wasmx-cli = { path = "./." }
 wit-bindgen = { version = "0.41", default-features = false }
 wit-component = { version = "0.229", default-features = false }
