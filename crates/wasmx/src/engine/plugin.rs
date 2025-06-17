@@ -75,7 +75,7 @@ fn dlsym<'a, T>(lib: &'a Library, symbol: &str) -> anyhow::Result<Symbol<'a, T>>
 //}
 
 fn link_func_0_1<T: Lower + 'static>(
-    linker: &mut LinkerInstance<Ctx>,
+    linker: &mut LinkerInstance<impl CabishView>,
     lib: &Library,
     symbol: &str,
     name: &str,
@@ -89,7 +89,7 @@ fn link_func_0_1<T: Lower + 'static>(
 }
 
 fn link_func_1_0<T: Lift + 'static>(
-    linker: &mut LinkerInstance<Ctx>,
+    linker: &mut LinkerInstance<impl CabishView>,
     lib: &Library,
     symbol: &str,
     name: &str,
@@ -103,7 +103,7 @@ fn link_func_1_0<T: Lift + 'static>(
 }
 
 fn link_func(
-    linker: &mut LinkerInstance<Ctx>,
+    linker: &mut LinkerInstance<impl CabishView>,
     lib: &Library,
     ty: &types::ComponentFunc,
     instance_name: &str,
@@ -251,7 +251,7 @@ impl Plugin {
     pub fn add_to_linker(
         &self,
         engine: &wasmtime::Engine,
-        linker: &mut LinkerInstance<Ctx>,
+        linker: &mut LinkerInstance<impl CabishView>,
         instance_name: &str,
         ty: &types::ComponentInstance,
     ) -> anyhow::Result<()> {

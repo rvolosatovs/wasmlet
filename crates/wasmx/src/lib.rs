@@ -15,7 +15,7 @@ use tracing::warn;
 
 pub use self::config::Manifest;
 pub use self::engine::{
-    bindings, wasi, Cmd, Ctx, DynamicWorkloadInvocation, Engine, WorkloadInvocation,
+    bindings, wasi, Cmd, Ctx, DynamicWorkloadInvocation, Engine, Wasi, WorkloadInvocation,
     WorkloadInvocationPayload,
 };
 pub use self::host::{

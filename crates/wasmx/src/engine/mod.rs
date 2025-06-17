@@ -5,6 +5,7 @@ pub mod wasi;
 mod workload;
 
 use core::fmt::Debug;
+use core::marker::PhantomData;
 use core::mem;
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -30,6 +31,7 @@ use wasmtime::component::{
     ResourceAny, ResourceTable, ResourceType, Val,
 };
 use wasmtime::{AsContextMut, Store, UpdateDeadline};
+use wasmtime_cabish::CabishView;
 
 use crate::config;
 use crate::{Manifest, EPOCH_MONOTONIC_NOW};
@@ -109,7 +111,7 @@ fn is_host_resource_type(ty: ResourceType) -> bool {
     // TODO: extend
 }
 
-pub enum Cmd {
+pub enum Cmd<T = Ctx> {
     ApplyManifest {
         manifest: Manifest<Bytes>,
         deadline: u64,
@@ -117,37 +119,37 @@ pub enum Cmd {
     },
     Invoke {
         name: Box<str>,
-        invocation: WorkloadInvocation,
+        invocation: WorkloadInvocation<T>,
         result: oneshot::Sender<anyhow::Result<()>>,
     },
 }
 
 #[derive(Debug)]
-pub struct WorkloadInvocation {
+pub struct WorkloadInvocation<T> {
     pub span: tracing::Span,
-    pub payload: WorkloadInvocationPayload,
+    pub payload: WorkloadInvocationPayload<T>,
 }
 
 #[derive(Debug)]
-pub struct DynamicWorkloadInvocationResult {
-    pub store: Store<Ctx>,
+pub struct DynamicWorkloadInvocationResult<T> {
+    pub store: Store<T>,
     pub params: Vec<Val>,
     pub results: Vec<Val>,
-    pub tx: oneshot::Sender<Store<Ctx>>,
+    pub tx: oneshot::Sender<Store<T>>,
 }
 
 #[derive(Debug)]
-pub struct DynamicWorkloadInvocation {
+pub struct DynamicWorkloadInvocation<T> {
     pub idx: ::wasmtime::component::ComponentExportIndex,
-    pub store: Store<Ctx>,
+    pub store: Store<T>,
     pub params: Vec<Val>,
     pub results: Vec<Val>,
-    pub result: oneshot::Sender<anyhow::Result<DynamicWorkloadInvocationResult>>,
+    pub result: oneshot::Sender<anyhow::Result<DynamicWorkloadInvocationResult<T>>>,
 }
 
 #[derive(Debug)]
-pub enum WorkloadInvocationPayload {
-    Dynamic(oneshot::Sender<(Store<Ctx>, oneshot::Sender<DynamicWorkloadInvocation>)>),
+pub enum WorkloadInvocationPayload<T> {
+    Dynamic(oneshot::Sender<(Store<T>, oneshot::Sender<DynamicWorkloadInvocation<T>>)>),
     WasiHttpHandler {
         request: wasi::http::IncomingRequest,
         response: wasi::http::ResponseOutparam,
@@ -155,9 +157,9 @@ pub enum WorkloadInvocationPayload {
     },
 }
 
-struct Workload<'scope> {
+struct Workload<'scope, T> {
     thread: ScopedJoinHandle<'scope, ()>,
-    invocations: mpsc::Sender<WorkloadInvocation>,
+    invocations: mpsc::Sender<WorkloadInvocation<T>>,
 }
 
 struct Service<'scope> {
@@ -166,12 +168,12 @@ struct Service<'scope> {
     _permit: SemaphorePermit<'scope>,
 }
 
-async fn handle_workload_import(
-    mut store: impl AsContextMut<Data = Ctx>,
+async fn handle_workload_import<T: ResourceView + Send + 'static>(
+    mut store: impl AsContextMut<Data = T>,
     params: &[Val],
     results: &mut [Val],
     idx: ComponentExportIndex,
-    invocations: mpsc::Sender<WorkloadInvocation>,
+    invocations: mpsc::Sender<WorkloadInvocation<T>>,
 ) -> anyhow::Result<()> {
     let (tx, rx) = oneshot::channel();
     invocations
@@ -218,12 +220,12 @@ async fn handle_workload_import(
     Ok(())
 }
 
-fn link_workload_import(
-    linker: &mut LinkerInstance<'_, Ctx>,
+fn link_workload_import<T: ResourceView + Send + 'static>(
+    linker: &mut LinkerInstance<'_, T>,
     name: impl Into<Arc<str>>,
     target: impl Into<Arc<str>>,
     idx: ComponentExportIndex,
-    invocations: mpsc::Sender<WorkloadInvocation>,
+    invocations: mpsc::Sender<WorkloadInvocation<T>>,
 ) -> anyhow::Result<()> {
     let name = name.into();
     let target = target.into();
@@ -256,14 +258,14 @@ fn compile_component(
 }
 
 #[instrument(level = "debug", skip_all)]
-fn resolve_workload_import(
-    linker: &mut Linker<Ctx>,
+fn resolve_workload_import<T: ResourceView + Send + 'static>(
+    linker: &mut Linker<T>,
     instance_name: &str,
     import_ty: types::ComponentInstance,
     target: impl Into<Arc<str>>,
     component: &Component,
     target_ty: &types::Component,
-    invocations: &mpsc::Sender<WorkloadInvocation>,
+    invocations: &mpsc::Sender<WorkloadInvocation<T>>,
 ) -> anyhow::Result<()> {
     let target = target.into();
     let mut linker = linker
@@ -330,10 +332,10 @@ fn resolve_workload_import(
     Ok(())
 }
 
-struct CompiledWorkload {
+struct CompiledWorkload<T> {
     span: tracing::Span,
     component: Component,
-    linker: Linker<Ctx>,
+    linker: Linker<T>,
     runtime: tokio::runtime::Runtime,
     thread_builder: thread::Builder,
     pool_size: usize,
@@ -342,14 +344,17 @@ struct CompiledWorkload {
 }
 
 #[instrument(skip_all)]
-fn resolve_imports(
-    linker: &mut Linker<Ctx>,
+fn resolve_imports<T>(
+    linker: &mut Linker<T>,
     component: &Component,
     plugins: &HashMap<Box<str>, Plugin>,
-    workload_pres: &[WorkloadPre],
+    workload_pres: &[WorkloadPre<T>],
     workload_names: &[Box<str>],
     imports: BTreeMap<Box<str>, config::component::Import>,
-) -> anyhow::Result<Vec<UnresolvedImport>> {
+) -> anyhow::Result<Vec<UnresolvedImport>>
+where
+    T: CabishView + ResourceView + Send + 'static,
+{
     let engine = component.engine();
     let mut unresolved = Vec::with_capacity(imports.len());
     for (instance_name, import) in imports {
@@ -411,10 +416,10 @@ fn resolve_imports(
     Ok(unresolved)
 }
 
-struct ResolvedWorkload {
+struct ResolvedWorkload<T> {
     component: Component,
     ty: types::Component,
-    invocations: mpsc::Sender<WorkloadInvocation>,
+    invocations: mpsc::Sender<WorkloadInvocation<T>>,
 }
 
 #[derive(Debug)]
@@ -426,31 +431,53 @@ struct UnresolvedImport {
 }
 
 #[derive(Default)]
-enum WorkloadPre {
+enum WorkloadPre<T> {
     #[default]
     Taken,
-    Compiled(CompiledWorkload),
+    Compiled(CompiledWorkload<T>),
     Unresolved {
-        workload: CompiledWorkload,
+        workload: CompiledWorkload<T>,
         imports: Vec<UnresolvedImport>,
     },
-    Resolved(ResolvedWorkload),
+    Resolved(ResolvedWorkload<T>),
 }
 
-pub struct Engine {
+pub struct Engine<T = Wasi> {
     engine: wasmtime::Engine,
     max_instances: usize,
     instance_permits: Arc<Semaphore>,
+    _builtins: PhantomData<fn(&T)>,
 }
 
-struct EngineState<'scope> {
+pub trait Builtins {
+    type Context: CabishView + ResourceView + Send + 'static;
+
+    fn new_context(deadline: u64, shutdown: watch::Receiver<u64>) -> Self::Context;
+    fn add_to_linker(linker: &mut Linker<Self::Context>) -> anyhow::Result<()>;
+}
+
+pub struct Wasi;
+
+impl Builtins for Wasi {
+    type Context = Ctx;
+
+    fn new_context(deadline: u64, shutdown: watch::Receiver<u64>) -> Self::Context {
+        Ctx::new(deadline, shutdown)
+    }
+
+    fn add_to_linker(linker: &mut Linker<Self::Context>) -> anyhow::Result<()> {
+        wasi::add_to_linker(linker, |cx| cx)
+    }
+}
+
+struct EngineState<'scope, T> {
     plugins: HashMap<Box<str>, Plugin>,
     services: HashMap<Box<str>, Service<'scope>>,
-    workloads: HashMap<Box<str>, Workload<'scope>>,
+    workloads: HashMap<Box<str>, Workload<'scope, T>>,
     shutdown: watch::Sender<u64>,
 }
 
-impl Default for EngineState<'_> {
+impl<T> Default for EngineState<'_, T> {
     fn default() -> Self {
         let (tx, _) = watch::channel(0);
         Self {
@@ -462,19 +489,20 @@ impl Default for EngineState<'_> {
     }
 }
 
-impl Engine {
+impl<T: Builtins> Engine<T> {
     pub fn new(engine: wasmtime::Engine, max_instances: usize) -> Self {
         Self {
             engine,
             max_instances,
             instance_permits: Arc::new(Semaphore::new(max_instances)),
+            _builtins: PhantomData,
         }
     }
 
     async fn handle_workload(
         &self,
-        pre: InstancePre<Ctx>,
-        mut invocations: mpsc::Receiver<WorkloadInvocation>,
+        pre: InstancePre<T::Context>,
+        mut invocations: mpsc::Receiver<WorkloadInvocation<T::Context>>,
         max_instances: usize,
         pool_size: usize,
         execution_time_ms: Option<u64>,
@@ -486,14 +514,14 @@ impl Engine {
             .unzip();
         let mut tasks = JoinSet::new();
         loop {
-            enum PooledInstance {
+            enum PooledInstance<T> {
                 Pre {
-                    pre: InstancePre<Ctx>,
-                    store: Store<Ctx>,
+                    pre: InstancePre<T>,
+                    store: Store<T>,
                 },
                 Instance {
                     instance: Instance,
-                    store: Store<Ctx>,
+                    store: Store<T>,
                 },
             }
             while let Some(res) = tasks.try_join_next() {
@@ -656,7 +684,7 @@ impl Engine {
     fn instantiate_workload<'scope, 'env>(
         &'env self,
         s: &'scope thread::Scope<'scope, 'env>,
-        state: &mut EngineState<'scope>,
+        state: &mut EngineState<'scope, T::Context>,
         name: &Box<str>,
         CompiledWorkload {
             span,
@@ -667,8 +695,8 @@ impl Engine {
             pool_size,
             max_instances,
             execution_time_ms,
-        }: CompiledWorkload,
-    ) -> anyhow::Result<ResolvedWorkload> {
+        }: CompiledWorkload<T::Context>,
+    ) -> anyhow::Result<ResolvedWorkload<T::Context>> {
         debug!("pre-instantiating component");
         let ty = linker
             .substituted_component_type(&component)
@@ -711,10 +739,14 @@ impl Engine {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn new_store(&self, mut budget: Option<u64>, shutdown: watch::Receiver<u64>) -> Store<Ctx> {
+    fn new_store(
+        &self,
+        mut budget: Option<u64>,
+        shutdown: watch::Receiver<u64>,
+    ) -> Store<T::Context> {
         let now = EPOCH_MONOTONIC_NOW.load(Ordering::Relaxed);
         let deadline = budget.map(|n| now.saturating_add(n)).unwrap_or_default();
-        let mut store = Store::new(&self.engine, Ctx::new(deadline, shutdown.clone()));
+        let mut store = Store::new(&self.engine, T::new_context(deadline, shutdown.clone()));
 
         // every 100ms
         let mut n = 100;
@@ -768,9 +800,9 @@ impl Engine {
     async fn handle_service(
         &self,
         shutdown: watch::Receiver<u64>,
-        mut store: Store<Ctx>,
+        mut store: Store<T::Context>,
         mut cmd: Command,
-        pre: CommandPre<Ctx>,
+        pre: CommandPre<T::Context>,
     ) {
         let should_exit = || {
             if let Ok(false) = shutdown.has_changed() {
@@ -827,8 +859,8 @@ impl Engine {
     fn instantiate_service<'scope, 'env>(
         &'env self,
         s: &'scope thread::Scope<'scope, 'env>,
-        state: &mut EngineState<'scope>,
-        pre: InstancePre<Ctx>,
+        state: &mut EngineState<'scope, T::Context>,
+        pre: InstancePre<T::Context>,
         name: Box<str>,
         _env: config::Env,
     ) -> anyhow::Result<()> {
@@ -876,7 +908,7 @@ impl Engine {
     fn apply_manifest<'scope, 'env>(
         &'env self,
         s: &'scope thread::Scope<'scope, 'env>,
-        state: &mut EngineState<'scope>,
+        state: &mut EngineState<'scope, T::Context>,
         deadline: u64,
         Manifest {
             plugins,
@@ -926,8 +958,8 @@ impl Engine {
             let component =
                 compile_component(&self.engine, &wasm, WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER)?;
 
-            let mut linker = Linker::<Ctx>::new(&self.engine);
-            wasi::add_to_linker(&mut linker, |cx| cx)?;
+            let mut linker = Linker::<T::Context>::new(&self.engine);
+            T::add_to_linker(&mut linker)?;
 
             let thread_name = format!("wasmx-workload-{name}");
             let runtime = tokio::runtime::Builder::new_current_thread()
@@ -1061,8 +1093,8 @@ impl Engine {
             let component =
                 compile_component(&self.engine, &wasm, WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER)?;
 
-            let mut linker = Linker::<Ctx>::new(&self.engine);
-            wasi::add_to_linker(&mut linker, |cx| cx)?;
+            let mut linker = Linker::<T::Context>::new(&self.engine);
+            T::add_to_linker(&mut linker)?;
 
             let unresolved_imports = resolve_imports(
                 &mut linker,
@@ -1116,9 +1148,9 @@ impl Engine {
     #[instrument(level = "debug", parent = span, skip(self, span, scheduled, payload))]
     fn invoke<'scope>(
         &self,
-        scheduled: &HashMap<Box<str>, Workload<'scope>>,
+        scheduled: &HashMap<Box<str>, Workload<'scope, T::Context>>,
         name: &str,
-        WorkloadInvocation { span, payload }: WorkloadInvocation,
+        WorkloadInvocation { span, payload }: WorkloadInvocation<T::Context>,
     ) -> anyhow::Result<()> {
         let workload = scheduled.get(name).context("workload not found")?;
         match workload.invocations.try_send(WorkloadInvocation {
@@ -1131,7 +1163,7 @@ impl Engine {
         }
     }
 
-    pub fn handle_commands(&self, mut cmds: mpsc::Receiver<Cmd>) -> anyhow::Result<()> {
+    pub fn handle_commands(&self, mut cmds: mpsc::Receiver<Cmd<T::Context>>) -> anyhow::Result<()> {
         thread::scope(|s| {
             let mut state = EngineState::default();
             let mut buf = vec![];

@@ -3,14 +3,13 @@ use tracing::{debug, instrument, trace};
 use wasmtime::component::{ComponentExportIndex, Instance, Val};
 use wasmtime::Store;
 
-use crate::engine::wasi;
-use crate::Ctx;
+use crate::engine::{wasi, ResourceView};
 
 pub mod value;
 
 #[instrument(level = "trace", skip(store, instance))]
-pub async fn handle_dynamic(
-    mut store: &mut Store<Ctx>,
+pub async fn handle_dynamic<T: ResourceView + Send>(
+    mut store: &mut Store<T>,
     instance: &Instance,
     idx: ComponentExportIndex,
     params: Vec<Val>,
@@ -31,8 +30,8 @@ pub async fn handle_dynamic(
 }
 
 #[instrument(level = "trace", skip_all)]
-pub async fn handle_http(
-    mut store: &mut Store<Ctx>,
+pub async fn handle_http<T: ResourceView + Send>(
+    mut store: &mut Store<T>,
     instance: &Instance,
     request: impl Into<wasi::http::IncomingRequest>,
     response: wasi::http::ResponseOutparam,

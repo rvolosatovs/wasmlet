@@ -27,7 +27,7 @@ use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 use wasmx::{
-    apply_manifest, load_and_apply_manifest, read_and_apply_manifest, Engine, Host, Manifest,
+    apply_manifest, load_and_apply_manifest, read_and_apply_manifest, Engine, Host, Manifest, Wasi,
     EPOCH_INTERVAL, EPOCH_MONOTONIC_NOW, EPOCH_SYSTEM_NOW,
 };
 
@@ -211,7 +211,7 @@ fn main() -> anyhow::Result<()> {
 
     let engine = thread::Builder::new()
         .name("wasmx-engine".into())
-        .spawn(move || Engine::new(engine, max_instances).handle_commands(cmds_rx))
+        .spawn(move || Engine::<Wasi>::new(engine, max_instances).handle_commands(cmds_rx))
         .context("failed to spawn scheduler thread")?;
 
     let main = tokio::runtime::Builder::new_multi_thread()
