@@ -8,7 +8,7 @@ pub mod sockets;
 pub use sockets::Config as Sockets;
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(tag = "type")]
 pub enum Mount {
     #[serde(rename = "host")]
@@ -16,14 +16,14 @@ pub enum Mount {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Filesystem {
     #[serde(default)]
     pub mounts: BTreeMap<Box<str>, Mount>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(tag = "type")]
 pub enum Cgroup {
     #[serde(rename = "none")]
@@ -36,21 +36,21 @@ pub enum Cgroup {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Cpu {
     #[serde(default)]
     pub max: Box<str>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Resources {
     #[serde(default)]
     pub cpu: Cpu,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Namespace {
     #[serde(default)]
     pub ipc: PathBuf,
@@ -61,7 +61,7 @@ pub struct Namespace {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Linux {
     #[serde(default)]
     pub cgroup: Cgroup,
@@ -72,7 +72,7 @@ pub struct Linux {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Config {
     // TODO: figure this out
     //#[serde(default)]

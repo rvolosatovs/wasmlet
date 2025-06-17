@@ -17,6 +17,7 @@ use kube::runtime::WatchStreamExt as _;
 use kube::{CustomResourceExt as _, ResourceExt as _};
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use quanta::Clock;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -25,11 +26,30 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
-use wasmx::config::{ManifestStatus, WasmxManifest};
 use wasmx::{
     apply_manifest, load_and_apply_manifest, read_and_apply_manifest, Engine, Host, Manifest,
     EPOCH_INTERVAL, EPOCH_MONOTONIC_NOW, EPOCH_SYSTEM_NOW,
 };
+
+#[derive(
+    Clone, Debug, Deserialize, Serialize, Eq, PartialEq, kube::CustomResource, schemars::JsonSchema,
+)]
+#[kube(
+    group = "wasmcloud.dev",
+    kind = "WasmPod",
+    namespaced,
+    status = PodStatus,
+    version = "v1alpha1"
+)]
+pub struct Pod {
+    #[serde(flatten)]
+    manifest: Manifest,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default, schemars::JsonSchema)]
+pub struct PodStatus {
+    pub error: Box<str>,
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -124,8 +144,8 @@ fn main() -> anyhow::Result<()> {
         k8s,
     } = match Command::parse() {
         Command::K8s(KubernetesCommand::Crd) => {
-            let crd = serde_yaml::to_string(&WasmxManifest::crd())
-                .context("failed to encode manifest CRD")?;
+            let crd =
+                serde_yaml::to_string(&WasmPod::crd()).context("failed to encode WasmPod CRD")?;
             print!("{crd}");
             return Ok(());
         }
@@ -220,43 +240,46 @@ fn main() -> anyhow::Result<()> {
             let client = kube::Client::try_default().await?;
 
             // TODO: Filter
-            let manifests: kube::Api<WasmxManifest> = kube::Api::default_namespaced(client);
+            let pods: kube::Api<WasmPod> = kube::Api::default_namespaced(client.clone());
 
             let wc = kube::runtime::watcher::Config::default().any_semantic();
-            let events = kube::runtime::watcher(manifests.clone(), wc).default_backoff();
+            let events = kube::runtime::watcher(pods.clone(), wc).default_backoff();
             let cmds_tx = cmds_tx.clone();
             tasks.spawn(async move {
+                let (k8s_namespace, k8s_name) = k8s.split_once(':').unwrap_or(("default", &k8s));
                 let mut events = pin!(events);
                 while let Some(event) = events.next().await {
                     match event {
                         Ok(
-                            kube::runtime::watcher::Event::Apply(manifest)
-                            | kube::runtime::watcher::Event::InitApply(manifest),
+                            kube::runtime::watcher::Event::Apply(pod)
+                            | kube::runtime::watcher::Event::InitApply(pod),
                         ) => {
-                            let name = manifest.name_any();
-                            if name != *k8s {
-                                debug!(name, "skipping CRD apply event");
+                            let namespace = pod.namespace();
+                            let namespace = namespace.as_deref().unwrap_or("default");
+                            let name = pod.name_any();
+                            if namespace != k8s_namespace || name != k8s_name {
+                                debug!(namespace, name, "skipping pod apply event");
                                 continue;
                             }
-                            info!(?manifest.spec, "CRD applied, reloading manifest");
+                            info!(?pod.spec.manifest, "pod CRD applied, reloading manifest");
 
-                            let version = manifest.resource_version();
+                            let version = pod.resource_version();
                             let status = if let Err(err) =
-                                load_and_apply_manifest(&cmds_tx, manifest.spec).await
+                                load_and_apply_manifest(&cmds_tx, pod.spec.manifest).await
                             {
-                                warn!(?err, "failed to apply CRD manifest");
-                                ManifestStatus {
+                                warn!(?err, "failed to apply manifest");
+                                PodStatus {
                                     error: format!("{err:#}").into(),
                                 }
                             } else {
-                                info!("applied CRD manifest");
-                                ManifestStatus {
+                                info!("applied manifest");
+                                PodStatus {
                                     error: Box::default(),
                                 }
                             };
                             let status = match serde_json::to_vec(&json!({
-                                "apiVersion": "wasmx.dev/v1",
-                                "kind": "WasmxManifest",
+                                "apiVersion": "wasmcloud.dev/v1alpha1",
+                                "kind": "WasmPod",
                                 "metadata": {
                                     "name": name,
                                     "resourceVersion": version,
@@ -269,32 +292,34 @@ fn main() -> anyhow::Result<()> {
                                     continue;
                                 }
                             };
-                            if let Err(err) = manifests
+                            if let Err(err) = pods
                                 .replace_status(&name, &kube::api::PostParams::default(), status)
                                 .await
                             {
-                                error!(?err, "failed to update status")
+                                error!(?err, "failed to update pod status")
                             }
                             continue;
                         }
-                        Ok(kube::runtime::watcher::Event::Delete(manifest)) => {
-                            let name = manifest.name_any();
-                            if name != *k8s {
-                                debug!(name, "skipping CRD delete event");
+                        Ok(kube::runtime::watcher::Event::Delete(pod)) => {
+                            let namespace = pod.namespace();
+                            let namespace = namespace.as_deref().unwrap_or("default");
+                            let name = pod.name_any();
+                            if namespace != k8s_namespace || name != k8s_name {
+                                debug!(namespace, name, "skipping pod delete event");
                                 continue;
                             }
-                            info!(?manifest.spec, "CRD deleted, reloading manifest");
+                            info!("pod deleted, reloading manifest");
                             if let Err(err) = apply_manifest(&cmds_tx, Manifest::default()).await {
-                                error!(?err, name, "failed to apply manifest");
+                                error!(?err, "failed to apply manifest");
                                 continue;
                             }
                             info!("applied manifest");
                         }
                         Ok(event) => {
-                            debug!(?event, "skip CRD event")
+                            debug!(?event, "skip pod event")
                         }
                         Err(err) => {
-                            error!(?err, "failed to receive manifest event");
+                            error!(?err, "failed to receive pod event");
                         }
                     };
                 }

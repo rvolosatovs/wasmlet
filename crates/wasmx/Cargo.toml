@@ -10,17 +10,9 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["kube"]
-kube = ["schemars", "dep:kube", "dep:k8s-openapi"]
+default = ["schemars"]
 
 [dependencies]
-# TODO: move to workspace
-cranelift = "0.120.0"
-cranelift-module = "0.120.0"
-cranelift-jit = "0.120.0"
-cranelift-native = "0.120.0"
-schemars = { version = "0.8.6", optional = true }
-
 anyhow = { workspace = true, features = ["std"] }
 bitflags = { workspace = true }
 bytes = { workspace = true }
@@ -29,6 +21,10 @@ cap-net-ext = { workspace = true }
 cap-rand = { workspace = true, features = ["small_rng"] }
 cap-std = { workspace = true }
 cap-time-ext = { workspace = true }
+cranelift = { workspace = true }
+cranelift-jit = { workspace = true }
+cranelift-module = { workspace = true }
+cranelift-native = { workspace = true }
 fs-set-times = { workspace = true }
 futures = { workspace = true }
 http = { workspace = true }
@@ -47,11 +43,10 @@ libc = { workspace = true }
 libloading = { workspace = true }
 pin-project-lite = { workspace = true }
 quanta = { workspace = true }
-kube = { workspace = true, features = ["derive"], optional = true }
-k8s-openapi = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["rustls-tls"] }
 rustix = { workspace = true }
 rustls = { workspace = true }
+schemars = { workspace = true, features = ["derive"], optional = true }
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

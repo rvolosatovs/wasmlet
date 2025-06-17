@@ -6,7 +6,7 @@ pub mod host;
 pub mod none;
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(tag = "type")]
 pub enum Network<T> {
     #[serde(rename = "none")]
@@ -28,7 +28,7 @@ impl<T> Default for Network<T> {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(tag = "type")]
 pub struct Transport {
     #[serde(default)]
@@ -39,7 +39,7 @@ pub struct Transport {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Config {
     #[serde(default)]
     pub tcp: Transport,

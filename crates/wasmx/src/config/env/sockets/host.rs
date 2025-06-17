@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(tag = "type")]
 pub enum Loopback {
     #[default]
@@ -13,7 +13,7 @@ pub enum Loopback {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Config<T> {
     pub address: Option<T>,
 

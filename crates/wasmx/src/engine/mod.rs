@@ -31,7 +31,8 @@ use wasmtime::component::{
 };
 use wasmtime::{AsContextMut, Store, UpdateDeadline};
 
-use crate::{config, Manifest, EPOCH_MONOTONIC_NOW};
+use crate::config;
+use crate::{Manifest, EPOCH_MONOTONIC_NOW};
 
 use self::bindings::exports::wasi::cli::{Command, CommandPre};
 use self::plugin::Plugin;
@@ -190,15 +191,17 @@ async fn handle_workload_import(
 
     let results_buf = vec![Val::Bool(false); results.len()];
     let (result_tx, result_rx) = oneshot::channel();
-    if let Err(_) = tx.send(DynamicWorkloadInvocation {
-        idx,
-        store: target_store,
-        params: params_buf,
-        results: results_buf,
-        result: result_tx,
-    }) {
-        bail!("dynamic workload invocation receiver dropped")
-    }
+    ensure!(
+        tx.send(DynamicWorkloadInvocation {
+            idx,
+            store: target_store,
+            params: params_buf,
+            results: results_buf,
+            result: result_tx,
+        })
+        .is_ok(),
+        "dynamic workload invocation receiver dropped",
+    );
     let result = result_rx.await.context("sender channel closed")?;
     let DynamicWorkloadInvocationResult {
         store: mut target_store,
@@ -258,18 +261,15 @@ fn resolve_workload_import(
     instance_name: &str,
     import_ty: types::ComponentInstance,
     target: impl Into<Arc<str>>,
-    ResolvedWorkload {
-        component,
-        ty,
-        invocations,
-    }: &ResolvedWorkload,
+    component: &Component,
+    target_ty: &types::Component,
+    invocations: &mpsc::Sender<WorkloadInvocation>,
 ) -> anyhow::Result<()> {
     let target = target.into();
-    let engine = component.engine();
     let mut linker = linker
         .instance(instance_name)
         .with_context(|| format!("failed to instantiate `{instance_name}` in the linker"))?;
-    let types::ComponentItem::ComponentInstance(ty) = ty
+    let types::ComponentItem::ComponentInstance(target_ty) = target_ty
         .get_export(component.engine(), instance_name)
         .with_context(|| format!("export `{instance_name}` not found on component type"))?
     else {
@@ -278,15 +278,16 @@ fn resolve_workload_import(
     let (_, instance_idx) = component
         .export_index(None, instance_name)
         .with_context(|| format!("export `{instance_name}` not found on component"))?;
-    for (name, import_ty) in import_ty.exports(engine) {
+    for (name, import_ty) in import_ty.exports(component.engine()) {
         match import_ty {
             types::ComponentItem::ComponentFunc(..) => {
-                let ty = ty
+                let target_ty = target_ty
                     .get_export(component.engine(), name)
                     .with_context(|| format!("export `{instance_name}.{name}` not found"))?;
-                let types::ComponentItem::ComponentFunc(..) = ty else {
-                    bail!("export `{instance_name}#{name}` is not a function");
-                };
+                ensure!(
+                    matches!(target_ty, types::ComponentItem::ComponentFunc(..)),
+                    "export `{instance_name}#{name}` is not a function"
+                );
                 let (_, func_idx) = component
                     .export_index(Some(&instance_idx), name)
                     .with_context(|| {
@@ -305,13 +306,13 @@ fn resolve_workload_import(
                 })?;
             }
             types::ComponentItem::Resource(..) => {
-                let ty = ty
+                let target_ty = target_ty
                     .get_export(component.engine(), name)
                     .with_context(|| format!("export `{instance_name}.{name}` not found"))?;
-                let types::ComponentItem::Resource(ty) = ty else {
+                let types::ComponentItem::Resource(target_ty) = target_ty else {
                     bail!("export `{instance_name}.{name}` is not a resource");
                 };
-                if !is_host_resource_type(ty) {
+                if !is_host_resource_type(target_ty) {
                     linker
                         .resource(name, ResourceType::host::<ResourceAny>(), |_, _| Ok(()))
                         .with_context(|| {
@@ -344,10 +345,10 @@ struct CompiledWorkload {
 fn resolve_imports(
     linker: &mut Linker<Ctx>,
     component: &Component,
-    workloads: &[WorkloadPre],
     plugins: &HashMap<Box<str>, Plugin>,
+    workload_pres: &[WorkloadPre],
+    workload_names: &[Box<str>],
     imports: BTreeMap<Box<str>, config::component::Import>,
-    names: &[Box<str>],
 ) -> anyhow::Result<Vec<UnresolvedImport>> {
     let engine = component.engine();
     let mut unresolved = Vec::with_capacity(imports.len());
@@ -364,10 +365,10 @@ fn resolve_imports(
                 kind: config::component::ImportKind::Workload,
                 target,
             } => {
-                let target_idx = names
+                let target_idx = workload_names
                     .binary_search(&target)
                     .map_err(|_| anyhow!("import target component `{target}` not found"))?;
-                match &workloads[target_idx] {
+                match &workload_pres[target_idx] {
                     WorkloadPre::Compiled { .. } | WorkloadPre::Unresolved { .. } => {
                         unresolved.push(UnresolvedImport {
                             name: instance_name,
@@ -377,9 +378,19 @@ fn resolve_imports(
                         });
                         continue;
                     }
-                    WorkloadPre::Resolved(resolved) => {
-                        resolve_workload_import(linker, &instance_name, ty, target, resolved)?
-                    }
+                    WorkloadPre::Resolved(ResolvedWorkload {
+                        component,
+                        ty: target_ty,
+                        invocations,
+                    }) => resolve_workload_import(
+                        linker,
+                        &instance_name,
+                        ty,
+                        target,
+                        component,
+                        target_ty,
+                        invocations,
+                    )?,
                     WorkloadPre::Taken => bail!("cycle in workload resolution"),
                 }
             }
@@ -718,9 +729,7 @@ impl Engine {
         store.set_epoch_deadline(n);
         store.epoch_deadline_callback(move |_| {
             let n = if let Some(budget) = budget.as_mut() {
-                if *budget == 0 {
-                    bail!("execution time budget exhausted")
-                }
+                ensure!(*budget > 0, "execution time budget exhausted");
                 if let Some(next) = budget.checked_sub(100) {
                     *budget = next;
                     100
@@ -737,9 +746,7 @@ impl Engine {
                     let deadline = shutdown.borrow();
                     debug!(?deadline, "shutdown requested");
                     let d = deadline.saturating_sub(EPOCH_MONOTONIC_NOW.load(Ordering::Relaxed));
-                    if d == 0 {
-                        bail!("shutdown time budget exhausted in the guest")
-                    }
+                    ensure!(d > 0, "shutdown time budget exhausted in the guest");
                     if let Some(next) = d.checked_sub(100) {
                         budget = Some(next);
                         Ok(UpdateDeadline::Yield(100))
@@ -879,6 +886,9 @@ impl Engine {
     ) -> anyhow::Result<()> {
         let workload_count = workloads.len();
         let service_count = services.len();
+
+        let mut workload_pres = Vec::with_capacity(workload_count);
+        let mut workload_names = Vec::with_capacity(workload_count);
         let (shutdown_tx, _) = watch::channel(0);
         let mut next = EngineState {
             plugins: HashMap::with_capacity(plugins.len()),
@@ -898,9 +908,7 @@ impl Engine {
             .collect::<anyhow::Result<HashMap<_, _>>>()?;
         next.plugins = plugins;
 
-        let mut workload_names = Vec::with_capacity(workload_count);
         let mut workload_pre_imports = Vec::with_capacity(workload_count);
-        let mut workload_pres = Vec::with_capacity(workload_count);
         for (
             name,
             config::Workload {
@@ -935,8 +943,8 @@ impl Engine {
             let thread_builder = thread::Builder::new().name(thread_name);
 
             let span = info_span!("handle_workload", name);
-            workload_names.push(name);
             workload_pre_imports.push(imports);
+            workload_names.push(name);
             workload_pres.push(WorkloadPre::Compiled(CompiledWorkload {
                 span,
                 component,
@@ -959,10 +967,10 @@ impl Engine {
             let unresolved_imports = resolve_imports(
                 &mut workload.linker,
                 &workload.component,
-                &workload_pres,
                 &next.plugins,
-                imports,
+                &workload_pres,
                 &workload_names,
+                imports,
             )
             .with_context(|| format!("failed to resolve imports of workload `{name}`"))?;
             if !unresolved_imports.is_empty() {
@@ -1006,12 +1014,18 @@ impl Engine {
                             });
                             continue;
                         }
-                        WorkloadPre::Resolved(resolved) => resolve_workload_import(
+                        WorkloadPre::Resolved(ResolvedWorkload {
+                            component,
+                            ty: target_ty,
+                            invocations,
+                        }) => resolve_workload_import(
                             &mut workload.linker,
                             &name,
                             ty,
                             target,
-                            resolved,
+                            component,
+                            target_ty,
+                            invocations,
                         )?,
                         WorkloadPre::Taken => bail!("cycle in workload resolution"),
                     }
@@ -1053,15 +1067,16 @@ impl Engine {
             let unresolved_imports = resolve_imports(
                 &mut linker,
                 &component,
-                &workload_pres,
                 &next.plugins,
-                imports,
+                &workload_pres,
                 &workload_names,
+                imports,
             )
             .with_context(|| format!("failed to resolve imports of service `{name}`"))?;
-            if !unresolved_imports.is_empty() {
-                bail!("service `{name}` contains unresolved imports")
-            }
+            ensure!(
+                unresolved_imports.is_empty(),
+                "service `{name}` contains unresolved imports"
+            );
             let pre = linker
                 .instantiate_pre(&component)
                 .context("failed to pre-instantiate service component")?;
@@ -1076,16 +1091,9 @@ impl Engine {
             service_threads.push((name, thread))
         }
         let mut workload_threads = Vec::with_capacity(state.workloads.len());
-        for (
-            name,
-            Workload {
-                thread,
-                invocations,
-            },
-        ) in state.workloads.drain()
-        {
-            drop(invocations);
-            workload_threads.push((name, thread))
+        for (name, workload) in state.workloads.drain() {
+            drop(workload.invocations);
+            workload_threads.push((name, workload.thread))
         }
 
         for (name, thread) in service_threads {

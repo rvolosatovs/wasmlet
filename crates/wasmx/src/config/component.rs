@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum ImportKind {
     #[serde(rename = "workload")]
     Workload,
@@ -12,7 +12,7 @@ pub enum ImportKind {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Import {
     #[serde(rename = "type")]
     pub kind: ImportKind,
@@ -20,7 +20,7 @@ pub struct Import {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
-#[cfg_attr(feature = "kube", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct Config<T> {
     pub src: T,
 

@@ -507,8 +507,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e20b81562751d4721684fde9fb8134d2ed33f44c38dde55ca787e5224e1a66"
 dependencies = [
  "cranelift-codegen 0.120.0",
- "cranelift-frontend 0.120.0",
- "cranelift-module",
 ]
 
 [[package]]
@@ -712,18 +710,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "328181a9083d99762d85954a16065d2560394a862b8dc10239f39668df528b95"
 dependencies = [
  "cranelift-codegen 0.119.0",
- "log",
- "smallvec",
- "target-lexicon",
-]
-
-[[package]]
-name = "cranelift-frontend"
-version = "0.120.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8219205608aa0b0e6769b580284a7e055c7e0c323c1041cde7ca078add3e412"
-dependencies = [
- "cranelift-codegen 0.120.0",
  "log",
  "smallvec",
  "target-lexicon",
@@ -2292,7 +2278,6 @@ checksum = "5eb0e5a5132e4b80bf037a78e3e12c8402535199f5de490d0c38f7eac71bc831"
 dependencies = [
  "async-trait",
  "chrono",
- "futures-util",
  "opentelemetry",
  "opentelemetry_sdk",
  "serde",
@@ -4131,7 +4116,7 @@ dependencies = [
  "cranelift-codegen 0.119.0",
  "cranelift-control 0.119.0",
  "cranelift-entity 0.119.0",
- "cranelift-frontend 0.119.0",
+ "cranelift-frontend",
  "cranelift-native 0.119.0",
  "gimli",
  "itertools",
@@ -4291,8 +4276,6 @@ dependencies = [
  "hyper 1.6.0",
  "hyper-util",
  "io-lifetimes",
- "k8s-openapi",
- "kube",
  "libc",
  "libloading",
  "pin-project-lite",
