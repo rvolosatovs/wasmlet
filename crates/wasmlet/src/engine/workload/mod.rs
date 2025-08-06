@@ -8,7 +8,7 @@ use crate::engine::{wasi, ResourceView};
 pub mod value;
 
 #[instrument(level = "trace", skip(store, instance))]
-pub async fn handle_dynamic<T: ResourceView + Send>(
+pub async fn handle_dynamic<T: ResourceView + Send + 'static>(
     mut store: &mut Store<T>,
     instance: &Instance,
     idx: ComponentExportIndex,
@@ -30,7 +30,7 @@ pub async fn handle_dynamic<T: ResourceView + Send>(
 }
 
 #[instrument(level = "trace", skip_all)]
-pub async fn handle_http<T: ResourceView + Send>(
+pub async fn handle_http<T: ResourceView + Send + 'static>(
     mut store: &mut Store<T>,
     instance: &Instance,
     request: impl Into<wasi::http::IncomingRequest>,

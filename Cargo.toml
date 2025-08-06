@@ -1,6 +1,6 @@
 [package]
 name = "wasmlet-cli"
-version = "0.0.1"
+version = "0.0.2"
 
 authors.workspace = true
 categories.workspace = true
@@ -122,12 +122,12 @@ toml = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false }
 url = { version = "2", default-features = false }
-wasi-preview1-component-adapter-provider = { version = "32", default-features = false }
-wasmlet = { version = "0.0.1", path = "./crates/wasmlet" }
+wasi-preview1-component-adapter-provider = { version = "34", default-features = false }
+wasmlet = { version = "0.0.2", path = "./crates/wasmlet" }
 wasmlet-cli = { path = "./." }
 wasmparser = { version = "0.229", default-features = false }
-wasmtime = { version = "32", default-features = false }
-wasmtime-cabish = { version = "0.3.1", default-features = false }
+wasmtime = { version = "33", default-features = false }
+wasmtime-cabish = { version = "0.5", default-features = false }
 webpki-roots = { version = "0.26", default-features = false }
 wit-bindgen = { version = "0.41", default-features = false }
 wit-component = { version = "0.229", default-features = false }

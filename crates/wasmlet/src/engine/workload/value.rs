@@ -5,7 +5,7 @@ use wasmtime::AsContextMut;
 
 use crate::engine::{is_host_resource_type, resource_types, ResourceView};
 
-pub fn lower<T: ResourceView, U: ResourceView>(
+pub fn lower<T: ResourceView + 'static, U: ResourceView + 'static>(
     store: &mut impl AsContextMut<Data = T>,
     target_store: &mut impl AsContextMut<Data = U>,
     v: &Val,
@@ -162,7 +162,7 @@ pub fn lower<T: ResourceView, U: ResourceView>(
     }
 }
 
-pub fn lift<T: ResourceView, U: ResourceView>(
+pub fn lift<T: ResourceView + 'static, U: ResourceView + 'static>(
     store: &mut impl AsContextMut<Data = T>,
     target_store: &mut impl AsContextMut<Data = U>,
     v: Val,

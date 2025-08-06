@@ -15,7 +15,7 @@ impl crate::engine::bindings::exports::wasi::http::Proxy {
         response: ResponseOutparam,
     ) -> wasmtime::Result<()>
     where
-        T: ResourceView + Send,
+        T: ResourceView + Send + 'static,
     {
         let mut store = store.as_context_mut();
         let table = store.data_mut().table();

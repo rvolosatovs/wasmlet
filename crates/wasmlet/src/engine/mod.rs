@@ -110,7 +110,7 @@ fn is_host_resource_type(ty: ResourceType) -> bool {
     // TODO: extend
 }
 
-pub enum Cmd<T = Ctx> {
+pub enum Cmd<T: 'static = Ctx> {
     ApplyManifest {
         manifest: Manifest<Bytes>,
         deadline: u64,
@@ -124,13 +124,13 @@ pub enum Cmd<T = Ctx> {
 }
 
 #[derive(Debug)]
-pub struct WorkloadInvocation<T> {
+pub struct WorkloadInvocation<T: 'static> {
     pub span: tracing::Span,
     pub payload: WorkloadInvocationPayload<T>,
 }
 
 #[derive(Debug)]
-pub struct DynamicWorkloadInvocationResult<T> {
+pub struct DynamicWorkloadInvocationResult<T: 'static> {
     pub store: Store<T>,
     pub params: Vec<Val>,
     pub results: Vec<Val>,
@@ -138,7 +138,7 @@ pub struct DynamicWorkloadInvocationResult<T> {
 }
 
 #[derive(Debug)]
-pub struct DynamicWorkloadInvocation<T> {
+pub struct DynamicWorkloadInvocation<T: 'static> {
     pub idx: ::wasmtime::component::ComponentExportIndex,
     pub store: Store<T>,
     pub params: Vec<Val>,
@@ -147,7 +147,7 @@ pub struct DynamicWorkloadInvocation<T> {
 }
 
 #[derive(Debug)]
-pub enum WorkloadInvocationPayload<T> {
+pub enum WorkloadInvocationPayload<T: 'static> {
     Dynamic(oneshot::Sender<(Store<T>, oneshot::Sender<DynamicWorkloadInvocation<T>>)>),
     WasiHttpHandler {
         request: wasi::http::IncomingRequest,
@@ -156,7 +156,7 @@ pub enum WorkloadInvocationPayload<T> {
     },
 }
 
-struct Workload<'scope, T> {
+struct Workload<'scope, T: 'static> {
     thread: ScopedJoinHandle<'scope, ()>,
     invocations: mpsc::Sender<WorkloadInvocation<T>>,
 }
@@ -276,8 +276,8 @@ fn resolve_workload_import<T: ResourceView + Send + 'static>(
     else {
         bail!("export `{instance_name}` type is not an instance")
     };
-    let (_, instance_idx) = component
-        .export_index(None, instance_name)
+    let instance_idx = component
+        .get_export_index(None, instance_name)
         .with_context(|| format!("export `{instance_name}` not found on component"))?;
     for (name, import_ty) in import_ty.exports(component.engine()) {
         match import_ty {
@@ -289,8 +289,8 @@ fn resolve_workload_import<T: ResourceView + Send + 'static>(
                     matches!(target_ty, types::ComponentItem::ComponentFunc(..)),
                     "export `{instance_name}#{name}` is not a function"
                 );
-                let (_, func_idx) = component
-                    .export_index(Some(&instance_idx), name)
+                let func_idx = component
+                    .get_export_index(Some(&instance_idx), name)
                     .with_context(|| {
                         format!("export `{instance_name}.{name}` not found on component")
                     })?;
@@ -331,7 +331,7 @@ fn resolve_workload_import<T: ResourceView + Send + 'static>(
     Ok(())
 }
 
-struct CompiledWorkload<T> {
+struct CompiledWorkload<T: 'static> {
     span: tracing::Span,
     component: Component,
     linker: Linker<T>,
@@ -415,7 +415,7 @@ where
     Ok(unresolved)
 }
 
-struct ResolvedWorkload<T> {
+struct ResolvedWorkload<T: 'static> {
     component: Component,
     ty: types::Component,
     invocations: mpsc::Sender<WorkloadInvocation<T>>,
@@ -430,7 +430,7 @@ struct UnresolvedImport {
 }
 
 #[derive(Default)]
-enum WorkloadPre<T> {
+enum WorkloadPre<T: 'static> {
     #[default]
     Taken,
     Compiled(CompiledWorkload<T>),
@@ -453,7 +453,7 @@ pub enum EntityId {
     Service(Box<str>),
 }
 
-pub trait Builtins: Sync {
+pub trait Builtins: Sync + 'static {
     type Context: CabishView + ResourceView + Send + 'static;
 
     fn new_context(
@@ -496,7 +496,7 @@ impl Builtins for Wasi {
     }
 }
 
-struct EngineState<'scope, T> {
+struct EngineState<'scope, T: 'static> {
     plugins: HashMap<Box<str>, Plugin>,
     services: HashMap<Box<str>, Service<'scope>>,
     workloads: HashMap<Box<str>, Workload<'scope, T>>,
@@ -541,7 +541,7 @@ impl<T: Builtins> Engine<T> {
             .unzip();
         let mut tasks = JoinSet::new();
         loop {
-            enum PooledInstance<T> {
+            enum PooledInstance<T: 'static> {
                 Pre {
                     pre: InstancePre<T>,
                     store: Store<T>,
