@@ -26,7 +26,7 @@ cranelift-jit = { workspace = true }
 cranelift-module = { workspace = true }
 cranelift-native = { workspace = true }
 fs-set-times = { workspace = true }
-futures = { workspace = true }
+futures = { workspace = true, features = ["alloc"] }
 http = { workspace = true }
 http-body = { workspace = true }
 http-body-util = { workspace = true }
