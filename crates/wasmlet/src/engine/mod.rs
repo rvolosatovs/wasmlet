@@ -5,7 +5,6 @@ pub mod wasi;
 mod workload;
 
 use core::fmt::Debug;
-use core::marker::PhantomData;
 use core::mem;
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -446,26 +445,53 @@ pub struct Engine<T = Wasi> {
     engine: wasmtime::Engine,
     max_instances: usize,
     instance_permits: Arc<Semaphore>,
-    _builtins: PhantomData<fn(&T)>,
+    builtins: T,
 }
 
-pub trait Builtins {
+pub enum EntityId {
+    Workload(Box<str>),
+    Service(Box<str>),
+}
+
+pub trait Builtins: Sync {
     type Context: CabishView + ResourceView + Send + 'static;
 
-    fn new_context(deadline: u64, shutdown: watch::Receiver<u64>) -> Self::Context;
-    fn add_to_linker(linker: &mut Linker<Self::Context>) -> anyhow::Result<()>;
+    fn new_context(
+        &self,
+        id: EntityId,
+        deadline: u64,
+        shutdown: watch::Receiver<u64>,
+    ) -> Self::Context;
+
+    fn add_to_linker(
+        &self,
+        id: EntityId,
+        linker: &mut Linker<Self::Context>,
+        component: &Component,
+    ) -> anyhow::Result<()>;
 }
 
+#[derive(Copy, Clone, Default)]
 pub struct Wasi;
 
 impl Builtins for Wasi {
     type Context = Ctx;
 
-    fn new_context(deadline: u64, shutdown: watch::Receiver<u64>) -> Self::Context {
+    fn new_context(
+        &self,
+        _id: EntityId,
+        deadline: u64,
+        shutdown: watch::Receiver<u64>,
+    ) -> Self::Context {
         Ctx::new(deadline, shutdown)
     }
 
-    fn add_to_linker(linker: &mut Linker<Self::Context>) -> anyhow::Result<()> {
+    fn add_to_linker(
+        &self,
+        _id: EntityId,
+        linker: &mut Linker<Self::Context>,
+        _component: &Component,
+    ) -> anyhow::Result<()> {
         wasi::add_to_linker(linker, |cx| cx)
     }
 }
@@ -490,12 +516,12 @@ impl<T> Default for EngineState<'_, T> {
 }
 
 impl<T: Builtins> Engine<T> {
-    pub fn new(engine: wasmtime::Engine, max_instances: usize) -> Self {
+    pub fn new(engine: wasmtime::Engine, builtins: T, max_instances: usize) -> Self {
         Self {
             engine,
             max_instances,
             instance_permits: Arc::new(Semaphore::new(max_instances)),
-            _builtins: PhantomData,
+            builtins,
         }
     }
 
@@ -503,6 +529,7 @@ impl<T: Builtins> Engine<T> {
         &self,
         pre: InstancePre<T::Context>,
         mut invocations: mpsc::Receiver<WorkloadInvocation<T::Context>>,
+        name: Box<str>,
         max_instances: usize,
         pool_size: usize,
         execution_time_ms: Option<u64>,
@@ -568,7 +595,11 @@ impl<T: Builtins> Engine<T> {
                 })
                 .unwrap_or_else(|| {
                     debug!("initializing a new instance");
-                    let store = self.new_store(execution_time_ms, shutdown.clone());
+                    let store = self.new_store(
+                        EntityId::Workload(name.clone()),
+                        execution_time_ms,
+                        shutdown.clone(),
+                    );
                     PooledInstance::Pre {
                         pre: pre.clone(),
                         store,
@@ -709,11 +740,13 @@ impl<T: Builtins> Engine<T> {
         let shutdown = state.shutdown.subscribe();
         let thread = thread_builder
             .spawn_scoped(s, {
+                let name = name.clone();
                 move || {
                     runtime.block_on(
                         self.handle_workload(
                             pre,
                             invocations_rx,
+                            name,
                             max_instances,
                             pool_size,
                             execution_time_ms,
@@ -741,12 +774,16 @@ impl<T: Builtins> Engine<T> {
     #[instrument(level = "debug", skip_all)]
     fn new_store(
         &self,
+        id: EntityId,
         mut budget: Option<u64>,
         shutdown: watch::Receiver<u64>,
     ) -> Store<T::Context> {
         let now = EPOCH_MONOTONIC_NOW.load(Ordering::Relaxed);
         let deadline = budget.map(|n| now.saturating_add(n)).unwrap_or_default();
-        let mut store = Store::new(&self.engine, T::new_context(deadline, shutdown.clone()));
+        let mut store = Store::new(
+            &self.engine,
+            self.builtins.new_context(id, deadline, shutdown.clone()),
+        );
 
         // every 100ms
         let mut n = 100;
@@ -803,6 +840,7 @@ impl<T: Builtins> Engine<T> {
         mut store: Store<T::Context>,
         mut cmd: Command,
         pre: CommandPre<T::Context>,
+        name: Box<str>,
     ) {
         let should_exit = || {
             if let Ok(false) = shutdown.has_changed() {
@@ -835,7 +873,7 @@ impl<T: Builtins> Engine<T> {
             if should_exit() {
                 return;
             }
-            store = self.new_store(None, shutdown.clone());
+            store = self.new_store(EntityId::Service(name.clone()), None, shutdown.clone());
             cmd = match pre.instantiate_async(&mut store).await {
                 Ok(cmd) => cmd,
                 Err(err) => {
@@ -877,7 +915,7 @@ impl<T: Builtins> Engine<T> {
             .block_on(async { self.instance_permits.acquire().await })
             .context("failed to acquire service instance semaphore permit")?;
         let shutdown = state.shutdown.subscribe();
-        let mut store = self.new_store(None, shutdown.clone());
+        let mut store = self.new_store(EntityId::Service(name.clone()), None, shutdown.clone());
         let cmd = runtime
             .block_on(pre.instantiate_async(&mut store))
             .context("failed to instantiate component")?;
@@ -886,9 +924,10 @@ impl<T: Builtins> Engine<T> {
         let thread = thread::Builder::new()
             .name(thread_name)
             .spawn_scoped(s, {
+                let name = name.clone();
                 move || {
                     runtime.block_on(
-                        self.handle_service(shutdown, store, cmd, pre)
+                        self.handle_service(shutdown, store, cmd, pre, name)
                             .instrument(span),
                     )
                 }
@@ -959,7 +998,11 @@ impl<T: Builtins> Engine<T> {
                 compile_component(&self.engine, &wasm, WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER)?;
 
             let mut linker = Linker::<T::Context>::new(&self.engine);
-            T::add_to_linker(&mut linker)?;
+            self.builtins.add_to_linker(
+                EntityId::Workload(name.clone()),
+                &mut linker,
+                &component,
+            )?;
 
             let thread_name = format!("wasmlet-workload-{name}");
             let runtime = tokio::runtime::Builder::new_current_thread()
@@ -1094,7 +1137,11 @@ impl<T: Builtins> Engine<T> {
                 compile_component(&self.engine, &wasm, WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER)?;
 
             let mut linker = Linker::<T::Context>::new(&self.engine);
-            T::add_to_linker(&mut linker)?;
+            self.builtins.add_to_linker(
+                EntityId::Service(name.clone()),
+                &mut linker,
+                &component,
+            )?;
 
             let unresolved_imports = resolve_imports(
                 &mut linker,

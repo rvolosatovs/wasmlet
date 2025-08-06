@@ -211,7 +211,7 @@ fn main() -> anyhow::Result<()> {
 
     let engine = thread::Builder::new()
         .name("wasmlet-engine".into())
-        .spawn(move || Engine::<Wasi>::new(engine, max_instances).handle_commands(cmds_rx))
+        .spawn(move || Engine::new(engine, Wasi, max_instances).handle_commands(cmds_rx))
         .context("failed to spawn scheduler thread")?;
 
     let main = tokio::runtime::Builder::new_multi_thread()
